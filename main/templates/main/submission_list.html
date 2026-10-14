@@ -1,0 +1,33 @@
+{% extends 'main/base.html' %}
+{% block title %}Записи{% endblock %}
+{% block content %}
+<h1 class="h2 page-title"><i class="bi bi-card-checklist"></i>
+  <span class="marker">{% if user.is_staff %}Все записи студентов{% else %}Мои записи{% endif %}</span></h1>
+{% if submissions %}
+<div class="table-responsive table-sticker">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr><th>Студент</th><th>Группа</th><th>Дисциплина</th><th>Слот</th><th>Лаба</th><th>Репозиторий</th><th>Статус</th><th></th></tr></thead>
+    <tbody>
+    {% for sub in submissions %}
+      <tr>
+        <td class="fw-bold">{{ sub.student_name }}</td>
+        <td>{{ sub.group_name }}</td>
+        <td>{{ sub.slot.subject.title }}</td>
+        <td>{{ sub.slot.date_time|date:"d.m H:i" }}</td>
+        <td>№{{ sub.lab_number }}</td>
+        <td><a href="{{ sub.github_url }}" target="_blank" rel="noopener"><i class="bi bi-github"></i></a></td>
+        <td><span class="badge-status st-{{ sub.status }}">{{ sub.get_status_display }}</span></td>
+        <td class="text-end text-nowrap">
+          <a href="{% url 'submission_update' sub.pk %}" class="btn btn-sm btn-outline-ink"><i class="bi bi-pencil"></i></a>
+          <a href="{% url 'submission_delete' sub.pk %}" class="btn btn-sm btn-danger-soft"><i class="bi bi-trash"></i></a>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="sticker empty"><i class="bi bi-journal-x"></i><h2 class="h5 mt-2">Записей пока нет</h2>
+  <a href="{% url 'slot_list' %}" class="btn btn-mint mt-2">Выбрать слот</a></div>
+{% endif %}
+{% endblock %}

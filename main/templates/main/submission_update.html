@@ -1,24 +1,14 @@
 {% extends 'main/base.html' %}
-
+{% block title %}Редактирование записи{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-6">
-    <div class="card shadow-sm">
-      <div class="card-header bg-primary text-white">
-        <h4 class="mb-0">Редактирование записи (UPDATE)</h4>
-      </div>
-      <div class="card-body">
-        <form method="post">
-          {% csrf_token %}
-          {{ form.as_p }}
-
-          <div class="d-flex gap-2 mt-3">
-            <button type="submit" class="btn btn-success">Сохранить изменения</button>
-            <a href="{% url 'slot_list' %}" class="btn btn-outline-secondary">Отмена</a>
-          </div>
-        </form>
-      </div>
-    </div>
+<div class="row justify-content-center"><div class="col-md-8 col-lg-6">
+  <div class="sticker p-4">
+    <h1 class="h4 page-title"><i class="bi bi-pencil-square"></i> Редактирование записи</h1>
+    <form method="post">{% csrf_token %}
+      {% include 'main/_form_fields.html' %}
+      <div class="d-flex gap-2"><button class="btn btn-mint">Сохранить</button>
+        <a href="{% url 'submission_list' %}" class="btn btn-outline-ink">Отмена</a></div>
+    </form>
   </div>
-</div>
+</div></div>
 {% endblock %}

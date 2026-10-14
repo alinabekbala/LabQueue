@@ -1,0 +1,14 @@
+{% extends 'main/base.html' %}
+{% block title %}Удаление слота{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-6">
+  <div class="sticker p-4">
+    <h1 class="h4 page-title"><i class="bi bi-exclamation-triangle"></i> Удалить слот?</h1>
+    <p>{{ slot }}<br><span class="text-muted">Вместе со слотом удалятся все записи студентов на него ({{ slot.submissions.count }}).</span></p>
+    <form method="post">{% csrf_token %}
+      <button class="btn btn-danger-soft">Да, удалить</button>
+      <a href="{% url 'slot_list' %}" class="btn btn-outline-ink">Отмена</a>
+    </form>
+  </div>
+</div></div>
+{% endblock %}
