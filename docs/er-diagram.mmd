@@ -1,8 +1,8 @@
 erDiagram
-    SUBJECT ||--o{ LABSLOT : "has slots"
-    TEACHER ||--o{ LABSLOT : "leads"
-    LABSLOT ||--o{ SUBMISSION : "has bookings"
-    USER ||--o{ SUBMISSION : "creates"
+    SUBJECT ||--o{ LABSLOT : "1 : N  имеет слоты"
+    TEACHER ||--o{ LABSLOT : "1 : N  ведёт слоты"
+    LABSLOT ||--o{ SUBMISSION : "1 : N  принимает записи"
+    USER |o--o{ SUBMISSION : "1 : N  оставляет записи"
 
     SUBJECT {
         int id PK
@@ -27,7 +27,7 @@ erDiagram
     SUBMISSION {
         int id PK
         int slot_id FK
-        int student_id FK "nullable, auth_user"
+        int student_id FK
         string student_name
         string group_name
         int lab_number

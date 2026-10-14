@@ -67,20 +67,55 @@ docs/er-diagram.mmd       ER-диаграмма (Mermaid)
 
 ## ER-диаграмма
 
+![ER-диаграмма](docs/er-diagram.png)
+
+Исходный код диаграммы (Mermaid, он же в `docs/er-diagram.mmd`):
+
 ```mermaid
 erDiagram
-    SUBJECT ||--o{ LABSLOT : "has slots"
-    TEACHER ||--o{ LABSLOT : "leads"
-    LABSLOT ||--o{ SUBMISSION : "has bookings"
-    USER ||--o{ SUBMISSION : "creates"
-    SUBJECT { int id PK  string title  string code  text description }
-    TEACHER { int id PK  string full_name  string email  string telegram_chat_id }
-    LABSLOT { int id PK  int subject_id FK  int teacher_id FK  datetime date_time  string classroom  int max_students }
-    SUBMISSION { int id PK  int slot_id FK  int student_id FK  string student_name  string group_name  int lab_number  string github_url  string status  datetime created_at }
-    USER { int id PK  string username  string email  bool is_staff }
-```
+    SUBJECT ||--o{ LABSLOT : "1 : N  имеет слоты"
+    TEACHER ||--o{ LABSLOT : "1 : N  ведёт слоты"
+    LABSLOT ||--o{ SUBMISSION : "1 : N  принимает записи"
+    USER |o--o{ SUBMISSION : "1 : N  оставляет записи"
 
-Полная версия лежит в `docs/er-diagram.mmd` (можно вставить в draw.io: *Упорядочить → Вставить → Дополнительно → Mermaid*).
+    SUBJECT {
+        int id PK
+        string title
+        string code
+        text description
+    }
+    TEACHER {
+        int id PK
+        string full_name
+        string email
+        string telegram_chat_id
+    }
+    LABSLOT {
+        int id PK
+        int subject_id FK
+        int teacher_id FK
+        datetime date_time
+        string classroom
+        int max_students
+    }
+    SUBMISSION {
+        int id PK
+        int slot_id FK
+        int student_id FK
+        string student_name
+        string group_name
+        int lab_number
+        string github_url
+        string status
+        datetime created_at
+    }
+    USER {
+        int id PK
+        string username
+        string email
+        bool is_staff
+    }
+```
 
 ## Модель данных
 
