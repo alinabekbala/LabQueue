@@ -1,0 +1,65 @@
+{% extends 'main/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card shadow">
+      <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">Форма записи на защиту</h4>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-light border mb-3">
+          <p class="mb-1"><strong>Дисциплина:</strong> {{ slot.subject.title }}</p>
+          <p class="mb-1"><strong>Преподаватель:</strong> {{ slot.teacher.full_name }}</p>
+          <p class="mb-1"><strong>Аудитория / Ссылка:</strong> {{ slot.classroom }}</p>
+          <p class="mb-0"><strong>Дата и время:</strong> {{ slot.date_time|date:"d.m.Y H:i" }}</p>
+        </div>
+
+        <form method="post">
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+              {{ form.non_field_errors }}
+            </div>
+          {% endif %}
+
+          <div class="mb-3">
+            <label for="{{ form.student_name.id_for_label }}" class="form-label">ФИО студента</label>
+            {{ form.student_name }}
+            {% if form.student_name.errors %}
+              <div class="text-danger small">{{ form.student_name.errors }}</div>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label for="{{ form.group_name.id_for_label }}" class="form-label">Учебная группа</label>
+            {{ form.group_name }}
+            {% if form.group_name.errors %}
+              <div class="text-danger small">{{ form.group_name.errors }}</div>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label for="{{ form.lab_number.id_for_label }}" class="form-label">Номер лабораторной работы</label>
+            {{ form.lab_number }}
+            {% if form.lab_number.errors %}
+              <div class="text-danger small">{{ form.lab_number.errors }}</div>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label for="{{ form.github_url.id_for_label }}" class="form-label">Ссылка на GitHub / GitLab</label>
+            {{ form.github_url }}
+            {% if form.github_url.errors %}
+              <div class="text-danger small">{{ form.github_url.errors }}</div>
+            {% endif %}
+          </div>
+
+          <button type="submit" class="btn btn-success w-100">Подтвердить запись</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

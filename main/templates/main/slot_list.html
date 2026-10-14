@@ -1,0 +1,90 @@
+{% extends 'main/base.html' %}
+
+{% block content %}
+<h2 class="mb-4">Доступные слоты для защиты</h2>
+
+<div class="row mb-5">
+  {% for slot in slots %}
+    <div class="col-md-4 mb-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body d-flex flex-column">
+          <span class="badge bg-primary mb-2 align-self-start">
+            {{ slot.subject.title }}
+          </span>
+          <h5 class="card-title">{{ slot.date_time|date:"d.m.Y H:i" }}</h5>
+          <p class="card-text text-muted mb-2">
+            <strong>Преподаватель:</strong> {{ slot.teacher.full_name }}
+          </p>
+          <p class="card-text mb-3">
+            <strong>Занято мест:</strong>
+            {{ slot.submissions.count }} / {{ slot.max_students }}
+          </p>
+
+          <div class="mt-auto">
+            {% if slot.submissions.count >= slot.max_students %}
+              <button class="btn btn-secondary w-100" disabled>Мест нет</button>
+            {% else %}
+              <a href="{% url 'book_slot' slot.id %}" class="btn btn-success w-100">Записаться</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  {% empty %}
+    <div class="col-12">
+      <div class="alert alert-info">
+        На данный момент нет доступных слотов для записи.
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<!-- БЛОК ДЛЯ ДЕМОНСТРАЦИИ UPDATE / DELETE -->
+<hr class="my-4">
+<h3 class="mb-3">Список всех заявок (Управление записями)</h3>
+
+{% if submissions %}
+  <div class="table-responsive shadow-sm rounded">
+    <table class="table table-striped table-hover align-middle mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>Студент</th>
+          <th>Группа</th>
+          <th>Дисциплина</th>
+          <th>Лаба №</th>
+          <th>Статус</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sub in submissions %}
+          <tr>
+            <td><strong>{{ sub.student_name }}</strong></td>
+            <td>{{ sub.group_name }}</td>
+            <td>{{ sub.slot.subject.title }}</td>
+            <td>№{{ sub.lab_number }}</td>
+            <td>
+              <span class="badge {% if sub.status == 'PASSED' %}bg-success{% elif sub.status == 'REJECTED' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                {{ sub.get_status_display|default:sub.status }}
+              </span>
+            </td>
+            <td>
+              <a href="{% url 'submission_update' sub.pk %}" class="btn btn-sm btn-outline-primary me-1">
+                Редактировать
+              </a>
+              <a href="{% url 'submission_delete' sub.pk %}" class="btn btn-sm btn-outline-danger">
+                Удалить
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="alert alert-secondary">
+    Заявок на сдачу пока нет.
+  </div>
+{% endif %}
+
+{% endblock %}
