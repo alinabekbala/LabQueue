@@ -1,6 +1,6 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="{{ theme }}" data-bs-theme="{{ theme }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -27,8 +27,14 @@
         <li class="nav-item"><a class="nav-link" href="{% url 'admin:index' %}"><i class="bi bi-gear"></i> Админка</a></li>
         {% endif %}
         {% endif %}
+        <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'state' %}active{% endif %}" href="{% url 'state' %}"><i class="bi bi-hdd-stack"></i> Состояние</a></li>
       </ul>
       <div class="d-flex align-items-center gap-3">
+        {% if theme == 'dark' %}
+          <a href="{% url 'set_theme' 'light' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-ink" title="Светлая тема"><i class="bi bi-sun-fill"></i></a>
+        {% else %}
+          <a href="{% url 'set_theme' 'dark' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-ink" title="Тёмная тема"><i class="bi bi-moon-stars-fill"></i></a>
+        {% endif %}
         {% if user.is_authenticated %}
           <span class="avatar {% if user.is_staff %}teacher{% endif %}">{{ user.username|slice:":1"|upper }}{% if user.is_staff %}<i class="bi bi-mortarboard-fill cap"></i>{% endif %}</span>
           <div class="text-white lh-1"><div class="fw-bold">{{ user.username }}</div>

@@ -10,6 +10,9 @@
       <div><i class="bi bi-geo-alt"></i> {{ slot.classroom }}</div>
       <div><i class="bi bi-clock"></i> {{ slot.date_time|date:"d.m.Y H:i" }}</div>
     </div>
+    {% if prefilled %}
+      <div class="alert alert-info py-2 small"><i class="bi bi-magic"></i> ФИО и группа подставлены из сессии (вы вводили их при прошлой записи).</div>
+    {% endif %}
     <form method="post">{% csrf_token %}
       {% include 'main/_form_fields.html' %}
       <button class="btn btn-mint w-100 py-2"><i class="bi bi-check2-circle"></i> Подтвердить запись</button>

@@ -1,0 +1,59 @@
+{% extends 'main/base.html' %}
+{% block title %}Состояние приложения{% endblock %}
+{% block content %}
+<h1 class="h2 page-title"><i class="bi bi-hdd-stack"></i> <span class="marker">Состояние приложения</span></h1>
+<p class="text-muted mb-4">HTTP не помнит предыдущих запросов, поэтому состояние хранят в <strong>сессии</strong> (на сервере) и в <strong>cookies</strong> (в браузере).</p>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="sticker p-4 h-100">
+      <h2 class="h5"><i class="bi bi-server text-danger"></i> Сессия (на сервере)</h2>
+      <p class="small mb-1">Ключ сессии: <code>{{ session_key|default:"—" }}…</code> (таблица <code>django_session</code>)</p>
+      <p class="small mb-3">Живёт: {% if expire_at_browser_close %}до закрытия браузера{% else %}{{ expiry_age_days }} дн.{% endif %}</p>
+      {% if session_rows %}
+      <div class="table-responsive"><table class="table kv-table align-middle">
+        <thead><tr><th>Ключ</th><th>Значение</th></tr></thead>
+        <tbody>
+        {% for row in session_rows %}
+          <tr><td><code>{{ row.name }}</code><div class="small text-muted">{{ row.note }}</div></td>
+              <td>{% if row.hidden %}<span class="hidden-value">скрыто</span>{% else %}{{ row.value }}{% endif %}</td></tr>
+        {% endfor %}
+        </tbody></table></div>
+      {% else %}
+        <div class="alert alert-secondary mb-0">Сессия пока пуста. Откройте главную страницу или слот.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="sticker p-4 h-100">
+      <h2 class="h5"><i class="bi bi-cookie text-danger"></i> Cookies (в браузере)</h2>
+      <p class="small mb-3">Браузер отправляет их на сервер с каждым запросом.</p>
+      {% if cookie_rows %}
+      <div class="table-responsive"><table class="table kv-table align-middle">
+        <thead><tr><th>Имя</th><th>Значение</th></tr></thead>
+        <tbody>
+        {% for row in cookie_rows %}
+          <tr><td><code>{{ row.name }}</code><div class="small text-muted">{{ row.note }}</div></td>
+              <td>{% if row.hidden %}<span class="hidden-value">скрыто</span>{% else %}<code>{{ row.value }}</code>{% endif %}</td></tr>
+        {% endfor %}
+        </tbody></table></div>
+      {% else %}
+        <div class="alert alert-secondary mb-0">Cookies пока нет.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="sticker p-4 mt-4">
+  <h2 class="h5">Управление</h2>
+  <div class="d-flex flex-wrap gap-2">
+    <a href="{% url 'set_theme' 'light' %}?next={{ request.path|urlencode }}" class="btn btn-outline-ink"><i class="bi bi-sun-fill"></i> Светлая тема</a>
+    <a href="{% url 'set_theme' 'dark' %}?next={{ request.path|urlencode }}" class="btn btn-outline-ink"><i class="bi bi-moon-stars-fill"></i> Тёмная тема</a>
+    <form method="post" action="{% url 'state_reset' %}" class="m-0">{% csrf_token %}
+      <button class="btn btn-danger-soft"><i class="bi bi-trash"></i> Сбросить данные сессии и cookies</button>
+    </form>
+  </div>
+  <p class="small text-muted mt-3 mb-0">Сброс не выводит вас из аккаунта: удаляются только данные приложения (фильтр, просмотренные слоты, автозаполнение, тема, время визита).</p>
+</div>
+{% endblock %}
