@@ -64,6 +64,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'main.context_processors.ui_state',
             ],
         },
     },
@@ -124,3 +125,10 @@ STATIC_URL = 'static/'
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'slot_list'
 LOGOUT_REDIRECT_URL = 'slot_list'
+
+
+# Сессии и cookies (ЛЗ 8)
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # данные сессий лежат в таблице django_session
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 14   # по умолчанию сессия живёт 14 дней
+SESSION_COOKIE_HTTPONLY = True           # JavaScript не видит cookie sessionid
+SESSION_COOKIE_SAMESITE = 'Lax'          # cookie не отправляется со сторонних сайтов
