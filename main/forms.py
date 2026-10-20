@@ -18,12 +18,21 @@ class BootstrapMixin:
     def _style_fields(self):
         for field in self.fields.values():
             widget = field.widget
-            css = "form-select" if isinstance(widget, forms.Select) else "form-control"
+            if isinstance(widget, forms.CheckboxInput):
+                css = "form-check-input"
+            elif isinstance(widget, forms.Select):
+                css = "form-select"
+            else:
+                css = "form-control"
             widget.attrs["class"] = f"{widget.attrs.get('class', '')} {css}".strip()
 
 
 class LoginForm(BootstrapMixin, AuthenticationForm):
-    """Форма входа."""
+    """Форма входа. Флажок «Запомнить меня» управляет сроком жизни сессии (ЛЗ 8)."""
+    remember_me = forms.BooleanField(
+        required=False, label="Запомнить меня на 30 дней",
+        help_text="Без флажка вход действует до закрытия браузера.",
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

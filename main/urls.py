@@ -3,7 +3,6 @@ from django.contrib.auth import views as auth_views
 from django.urls import path
 
 from . import views
-from .forms import LoginForm
 
 urlpatterns = [
     # слоты
@@ -18,8 +17,10 @@ urlpatterns = [
     path("submission/<int:pk>/delete/", views.submission_delete_view, name="submission_delete"),
     # авторизация
     path("register/", views.register_view, name="register"),
-    path("login/", auth_views.LoginView.as_view(
-        template_name="main/login.html", authentication_form=LoginForm,
-        redirect_authenticated_user=True), name="login"),
+    path("login/", views.RememberLoginView.as_view(), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    # состояние приложения: сессии и cookies (ЛЗ 8)
+    path("theme/<str:theme>/", views.set_theme_view, name="set_theme"),
+    path("state/", views.state_view, name="state"),
+    path("state/reset/", views.state_reset_view, name="state_reset"),
 ]
