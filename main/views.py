@@ -1,5 +1,7 @@
 # main/views.py
 """Представления (views): принимают запрос, работают с ORM, отдают шаблон."""
+import json
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login
@@ -7,7 +9,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.views import LoginView
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -98,6 +100,7 @@ def slot_list_view(request):
 
     response = render(request, "main/slot_list.html", {
         "slots": slots,
+        "filtered": bool(selected),
         "subjects": Subject.objects.all(),
         "selected": selected,
         "filter_restored": filter_restored,
@@ -154,7 +157,9 @@ def submission_list_view(request):
     qs = Submission.objects.select_related("slot__subject", "slot__teacher")
     if not is_teacher(request.user):
         qs = qs.filter(student=request.user)
-    return render(request, "main/submission_list.html", {"submissions": qs})
+    return render(request, "main/submission_list.html", {
+        "submissions": qs, "status_choices": Submission.STATUS_CHOICES,
+    })
 
 
 @login_required
@@ -219,6 +224,42 @@ def submission_delete_view(request, pk):
         messages.success(request, "Запись удалена.")
         return redirect("submission_list")
     return render(request, "main/submission_delete.html", {"submission": submission})
+
+
+# ---------- Динамические компоненты и события (ЛЗ 9) ----------
+def slot_seats_view(request, pk):
+    """AJAX: JSON с числом занятых мест (страница записи обновляет его сама)."""
+    slot = get_object_or_404(
+        LabSlot.objects.annotate(taken_count=Count("submissions")), pk=pk
+    )
+    return JsonResponse({
+        "taken": slot.taken,
+        "max": slot.max_students,
+        "free": slot.free_places,
+        "is_full": slot.is_full,
+    })
+
+
+@require_POST
+def submission_status_view(request, pk):
+    """AJAX (POST, JSON): преподаватель меняет статус записи без перезагрузки.
+
+    Права проверяются на СЕРВЕРЕ: скрыть выпадающий список в шаблоне мало.
+    CSRF-токен браузер присылает в заголовке X-CSRFToken.
+    """
+    if not is_teacher(request.user):
+        return JsonResponse({"ok": False, "error": "Недостаточно прав"}, status=403)
+    submission = get_object_or_404(Submission, pk=pk)
+    try:
+        data = json.loads(request.body or b"{}")
+    except ValueError:
+        return JsonResponse({"ok": False, "error": "Некорректный JSON"}, status=400)
+    status = data.get("status") if isinstance(data, dict) else None
+    if status not in dict(Submission.STATUS_CHOICES):
+        return JsonResponse({"ok": False, "error": "Неизвестный статус"}, status=400)
+    submission.status = status
+    submission.save(update_fields=["status"])
+    return JsonResponse({"ok": True, "status": status, "label": submission.get_status_display()})
 
 
 # ---------- Состояние приложения: cookies и сессия (ЛЗ 8) ----------

@@ -16,7 +16,15 @@
         <td>{{ sub.slot.date_time|date:"d.m H:i" }}</td>
         <td>№{{ sub.lab_number }}</td>
         <td><a href="{{ sub.github_url }}" target="_blank" rel="noopener"><i class="bi bi-github"></i></a></td>
-        <td><span class="badge-status st-{{ sub.status }}">{{ sub.get_status_display }}</span></td>
+        <td>
+          <span class="badge-status js-status-badge st-{{ sub.status }}">{{ sub.get_status_display }}</span>
+          {% if user.is_staff %}
+          {# Событие change -> fetch POST (dynamic.js): статус меняется без перезагрузки #}
+          <select class="form-select form-select-sm mt-1 js-status-select" data-url="{% url 'submission_status' sub.pk %}" data-current="{{ sub.status }}" aria-label="Статус записи">
+            {% for value, label in status_choices %}<option value="{{ value }}" {% if value == sub.status %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+          {% endif %}
+        </td>
         <td class="text-end text-nowrap">
           <a href="{% url 'submission_update' sub.pk %}" class="btn btn-sm btn-outline-ink"><i class="bi bi-pencil"></i></a>
           <a href="{% url 'submission_delete' sub.pk %}" class="btn btn-sm btn-danger-soft"><i class="bi bi-trash"></i></a>

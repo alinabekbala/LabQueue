@@ -9,13 +9,17 @@
       <div><i class="bi bi-person-badge"></i> {{ slot.teacher.full_name }}</div>
       <div><i class="bi bi-geo-alt"></i> {{ slot.classroom }}</div>
       <div><i class="bi bi-clock"></i> {{ slot.date_time|date:"d.m.Y H:i" }}</div>
+      {# Живой счётчик: dynamic.js раз в 10 секунд спрашивает JSON у сервера #}
+      <div class="fw-bold mt-1" id="seats-live" data-url="{% url 'slot_seats' slot.id %}">
+        <i class="bi bi-people"></i> Занято: <span id="seats-taken">{{ slot.taken }}</span> из <span id="seats-max">{{ slot.max_students }}</span>
+      </div>
     </div>
     {% if prefilled %}
       <div class="alert alert-info py-2 small"><i class="bi bi-magic"></i> ФИО и группа подставлены из сессии (вы вводили их при прошлой записи).</div>
     {% endif %}
     <form method="post">{% csrf_token %}
       {% include 'main/_form_fields.html' %}
-      <button class="btn btn-mint w-100 py-2"><i class="bi bi-check2-circle"></i> Подтвердить запись</button>
+      <button class="btn btn-mint w-100 py-2" id="book-submit"><i class="bi bi-check2-circle"></i> Подтвердить запись</button>
     </form>
   </div>
 </div></div>

@@ -1,0 +1,31 @@
+{% load slot_tags %}
+{# Partial (ЛЗ 9): одна карточка слота. Подключается через {% include %}. #}
+{# Не обращается к БД: использует то, что подготовил view (taken_count). #}
+<div class="col-md-6 col-lg-4">
+  <div class="sticker slot-card" data-slot-id="{{ slot.id }}">
+    {% cycle 'c1' 'c2' 'c3' 'c4' 'c5' as tone silent %}
+    <span class="subject-chip {{ tone }}"><i class="bi bi-book"></i> {{ slot.subject.title }}</span>
+    <h2 class="h5">{{ slot.date_time|date:"d E, H:i" }}</h2>
+    <p class="mb-1"><i class="bi bi-person-badge"></i> {{ slot.teacher.full_name }}</p>
+    <p class="mb-3"><i class="bi bi-geo-alt"></i> {{ slot.classroom }}</p>
+    <div class="d-flex justify-content-between small fw-bold mb-1">
+      <span>Занято мест</span><span>{{ slot.taken }} / {{ slot.max_students }}</span>
+    </div>
+    <div class="meter mb-1 {% if slot.is_full %}full{% endif %}"><span style="width: {% widthratio slot.taken slot.max_students 100 %}%"></span></div>
+    <div class="small text-muted mb-3">
+      {% if slot.is_full %}Свободных мест нет{% else %}Свободно: {{ slot.free_places|ru_places }}{% endif %}
+    </div>
+    <div class="mt-auto d-flex gap-2">
+      {% if slot.is_full %}
+        <button class="btn btn-outline-ink flex-grow-1" disabled>Мест нет</button>
+      {% else %}
+        <a href="{% url 'book_slot' slot.id %}" class="btn btn-mint flex-grow-1"><i class="bi bi-pencil-square"></i> Записаться</a>
+      {% endif %}
+      {# Кнопки по роли: это только внешний вид, права всё равно проверяет сервер #}
+      {% if user.is_staff %}
+        <a href="{% url 'slot_update' slot.pk %}" class="btn btn-outline-ink" title="Редактировать"><i class="bi bi-pencil"></i></a>
+        <a href="{% url 'slot_delete' slot.pk %}" class="btn btn-danger-soft" title="Удалить"><i class="bi bi-trash"></i></a>
+      {% endif %}
+    </div>
+  </div>
+</div>

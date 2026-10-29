@@ -84,3 +84,10 @@ h1,h2,h3,h4,h5,.brand{font-family:'Unbounded','Nunito',sans-serif; letter-spacin
 .kv-table code{color:var(--coral);word-break:break-all}
 .hidden-value{color:var(--muted);font-style:italic}
 @media(max-width:767px){.auth-side{border-radius:14px 14px 0 0}}
+/* ЛЗ 9: динамические компоненты */
+.nav-count{display:inline-block;min-width:1.4rem;padding:0 .4rem;margin-left:.25rem;border-radius:99px;background:var(--coral);
+  color:#fff;font-size:.72rem;font-weight:800;line-height:1.4rem;text-align:center}
+.js-status-select.flash-ok{outline:3px solid var(--mint)}
+.js-status-select.flash-err{outline:3px solid var(--coral)}
+.live-hint{font-size:.85rem;font-weight:700;margin-top:.3rem}
+.live-hint.ok{color:var(--mint-d)}.live-hint.bad{color:var(--coral)}

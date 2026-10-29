@@ -1,16 +1,21 @@
 {% extends 'main/base.html' %}
 {% block title %}Слоты защиты{% endblock %}
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+{% load slot_tags %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
   <h1 class="h2 page-title mb-0"><i class="bi bi-calendar-week"></i> <span class="marker">Слоты защиты</span></h1>
-  <form method="get" class="d-flex gap-2">
-    <select name="subject" class="form-select" onchange="this.form.submit()">
-      <option value="">Все дисциплины</option>
-      {% for s in subjects %}<option value="{{ s.id }}" {% if selected == s.id|stringformat:"s" %}selected{% endif %}>{{ s.title }}</option>{% endfor %}
-    </select>
-    <noscript><button class="btn btn-ink">Показать</button></noscript>
-  </form>
 </div>
+
+<form method="get" class="d-flex gap-2 mb-3">
+  <select name="subject" class="form-select w-auto" onchange="this.form.submit()">
+    <option value="">Все дисциплины</option>
+    {% for s in subjects %}<option value="{{ s.id }}" {% if selected == s.id|stringformat:"s" %}selected{% endif %}>{{ s.title }}</option>{% endfor %}
+  </select>
+  <noscript><button class="btn btn-ink">Показать</button></noscript>
+</form>
+
+{# Компонент (inclusion_tag): сам получает данные, view страницы про него не знает #}
+{% top_free_slots 3 %}
 
 <div class="sticker state-strip mb-3">
   <span><i class="bi bi-clock-history"></i>{% if last_visit %}Прошлый визит: {{ last_visit|date:"d.m.Y H:i" }}{% else %}Это ваш первый визит{% endif %}</span>
@@ -31,32 +36,6 @@
 {% endif %}
 
 <div class="row g-4 mb-5">
-  {% for slot in slots %}
-  <div class="col-md-6 col-lg-4">
-    <div class="sticker slot-card">
-      {% cycle 'c1' 'c2' 'c3' 'c4' 'c5' as tone silent %}
-      <span class="subject-chip {{ tone }}"><i class="bi bi-book"></i> {{ slot.subject.title }}</span>
-      <h2 class="h5">{{ slot.date_time|date:"d E, H:i" }}</h2>
-      <p class="mb-1"><i class="bi bi-person-badge"></i> {{ slot.teacher.full_name }}</p>
-      <p class="mb-3"><i class="bi bi-geo-alt"></i> {{ slot.classroom }}</p>
-      <div class="d-flex justify-content-between small fw-bold mb-1"><span>Занято мест</span><span>{{ slot.taken }} / {{ slot.max_students }}</span></div>
-      <div class="meter mb-3 {% if slot.is_full %}full{% endif %}"><span style="width: {% widthratio slot.taken slot.max_students 100 %}%"></span></div>
-      <div class="mt-auto d-flex gap-2">
-        {% if slot.is_full %}
-          <button class="btn btn-outline-ink flex-grow-1" disabled>Мест нет</button>
-        {% else %}
-          <a href="{% url 'book_slot' slot.id %}" class="btn btn-mint flex-grow-1"><i class="bi bi-pencil-square"></i> Записаться</a>
-        {% endif %}
-        {% if user.is_staff %}
-          <a href="{% url 'slot_update' slot.pk %}" class="btn btn-outline-ink" title="Редактировать"><i class="bi bi-pencil"></i></a>
-          <a href="{% url 'slot_delete' slot.pk %}" class="btn btn-danger-soft" title="Удалить"><i class="bi bi-trash"></i></a>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-  {% empty %}
-  <div class="col-12"><div class="sticker empty"><i class="bi bi-inbox"></i><h2 class="h5 mt-2">Слотов пока нет</h2>
-    {% if user.is_staff %}<a href="{% url 'slot_create' %}" class="btn btn-mint mt-2">Создать первый слот</a>{% endif %}</div></div>
-  {% endfor %}
+  {% include "main/_slot_cards.html" %}
 </div>
 {% endblock %}

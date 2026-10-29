@@ -80,6 +80,11 @@ class LabSlot(models.Model):
     def is_full(self):
         return self.taken >= self.max_students
 
+    @property
+    def free_places(self):
+        """Сколько мест ещё свободно (не меньше нуля)."""
+        return max(self.max_students - self.taken, 0)
+
 
 class Submission(models.Model):
     """Запись студента на защиту"""

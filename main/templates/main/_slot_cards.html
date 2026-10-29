@@ -1,0 +1,10 @@
+{# Partial (ЛЗ 9): список карточек. Один и тот же шаблон используется #}
+{# и для полной страницы, и для ответа на AJAX-запрос (живой поиск). #}
+{% for slot in slots %}
+  {% include "main/_slot_card.html" with slot=slot %}
+{% empty %}
+  <div class="col-12"><div class="sticker empty"><i class="bi bi-inbox"></i>
+    <h2 class="h5 mt-2">{% if filtered %}По вашему запросу слотов нет{% else %}Слотов пока нет{% endif %}</h2>
+    {% if user.is_staff and not filtered %}<a href="{% url 'slot_create' %}" class="btn btn-mint mt-2">Создать первый слот</a>{% endif %}
+  </div></div>
+{% endfor %}

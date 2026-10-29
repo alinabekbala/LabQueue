@@ -19,6 +19,9 @@ urlpatterns = [
     path("register/", views.register_view, name="register"),
     path("login/", views.RememberLoginView.as_view(), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    # динамические компоненты и AJAX (ЛЗ 9)
+    path("slots/<int:pk>/seats/", views.slot_seats_view, name="slot_seats"),
+    path("submission/<int:pk>/status/", views.submission_status_view, name="submission_status"),
     # состояние приложения: сессии и cookies (ЛЗ 8)
     path("theme/<str:theme>/", views.set_theme_view, name="set_theme"),
     path("state/", views.state_view, name="state"),
