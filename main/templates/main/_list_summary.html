@@ -1,0 +1,2 @@
+{# Partial: «Показано 1–6 из 25». Принимает page_obj. #}
+{% if page_obj.paginator.count %}Показано {{ page_obj.start_index }}–{{ page_obj.end_index }} из {{ page_obj.paginator.count }}{% else %}Ничего не найдено{% endif %}

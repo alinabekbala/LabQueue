@@ -1,0 +1,42 @@
+{# Панель поиска, фильтров и сортировки слотов. Обычная форма GET: параметры остаются в адресе. #}
+<form method="get" class="sticker filter-card mb-3">
+  <div class="row g-2 align-items-end">
+    <div class="col-lg-4 col-md-6">
+      <label class="form-label small fw-bold mb-1" for="{{ form.q.id_for_label }}">Поиск</label>
+      {{ form.q }}
+    </div>
+    <div class="col-lg-4 col-md-6">
+      <label class="form-label small fw-bold mb-1" for="{{ form.subject.id_for_label }}">Дисциплина</label>
+      {{ form.subject }}
+    </div>
+    <div class="col-lg-4 col-md-6">
+      <label class="form-label small fw-bold mb-1" for="{{ form.teacher.id_for_label }}">Преподаватель</label>
+      {{ form.teacher }}
+    </div>
+    <div class="col-lg-3 col-md-6">
+      <label class="form-label small fw-bold mb-1" for="{{ form.date_from.id_for_label }}">С даты</label>
+      {{ form.date_from }}
+    </div>
+    <div class="col-lg-3 col-md-6">
+      <label class="form-label small fw-bold mb-1" for="{{ form.date_to.id_for_label }}">По дату</label>
+      {{ form.date_to }}
+    </div>
+    <div class="col-lg-3 col-md-6">
+      <label class="form-label small fw-bold mb-1" for="{{ form.sort.id_for_label }}">Сортировка</label>
+      {{ form.sort }}
+    </div>
+    <div class="col-lg-3 col-md-6">
+      <div class="form-check mb-2">
+        {{ form.only_free }}
+        <label class="form-check-label fw-bold small" for="{{ form.only_free.id_for_label }}">Только со свободными местами</label>
+      </div>
+    </div>
+  </div>
+  <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+    <button class="btn btn-mint" type="submit"><i class="bi bi-search"></i> Найти</button>
+    {# ?subject= очищает и запомненный в сессии фильтр дисциплины (ЛЗ 8) #}
+    <a href="{% url 'slot_list' %}?subject=" class="btn btn-outline-ink"><i class="bi bi-x-circle"></i> Сбросить</a>
+    <span class="ms-auto small fw-bold">{% include "main/_list_summary.html" %}</span>
+  </div>
+  {% include "main/_form_errors.html" %}
+</form>

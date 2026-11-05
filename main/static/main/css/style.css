@@ -91,3 +91,12 @@ h1,h2,h3,h4,h5,.brand{font-family:'Unbounded','Nunito',sans-serif; letter-spacin
 .js-status-select.flash-err{outline:3px solid var(--coral)}
 .live-hint{font-size:.85rem;font-weight:700;margin-top:.3rem}
 .live-hint.ok{color:var(--mint-d)}.live-hint.bad{color:var(--coral)}
+/* ЛЗ 10: списки, поиск, сортировка, пагинация */
+.filter-card{padding:1rem 1.1rem}
+.sort-link{color:#fff;text-decoration:none;white-space:nowrap}
+.sort-link:hover,.sort-link.active{color:var(--sun)}
+.sort-arrow{font-size:.7rem}
+.pagination .page-link{border:2px solid var(--edge);color:var(--text);background:var(--card);font-weight:800;margin:0 .15rem;border-radius:10px!important}
+.pagination .page-item.active .page-link{background:var(--sun);border-color:var(--edge);color:#1f2a44}
+.pagination .page-item.disabled .page-link{opacity:.5}
+.pagination .page-link:hover{background:var(--sun);color:#1f2a44}

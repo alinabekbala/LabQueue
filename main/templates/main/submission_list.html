@@ -1,12 +1,24 @@
 {% extends 'main/base.html' %}
 {% block title %}Записи{% endblock %}
 {% block content %}
+{% load slot_tags %}
 <h1 class="h2 page-title"><i class="bi bi-card-checklist"></i>
   <span class="marker">{% if user.is_staff %}Все записи студентов{% else %}Мои записи{% endif %}</span></h1>
+{# ЛЗ 10: поиск и фильтры #}
+{% include "main/_submission_filters.html" %}
+
 {% if submissions %}
 <div class="table-responsive table-sticker">
   <table class="table table-hover align-middle mb-0">
-    <thead><tr><th>Студент</th><th>Группа</th><th>Дисциплина</th><th>Слот</th><th>Лаба</th><th>Репозиторий</th><th>Статус</th><th></th></tr></thead>
+    <thead><tr>
+      <th>{% sort_th "student" "Студент" %}</th>
+      <th>{% sort_th "group" "Группа" %}</th>
+      <th>{% sort_th "subject" "Дисциплина" %}</th>
+      <th>{% sort_th "slot" "Слот" %}</th>
+      <th>{% sort_th "lab" "Лаба" %}</th>
+      <th>Репозиторий</th>
+      <th>{% sort_th "status" "Статус" %}</th>
+      <th></th></tr></thead>
     <tbody>
     {% for sub in submissions %}
       <tr>
@@ -34,8 +46,17 @@
     </tbody>
   </table>
 </div>
+{# ЛЗ 10: пагинация #}
+{% pagination page_obj %}
 {% else %}
-<div class="sticker empty"><i class="bi bi-journal-x"></i><h2 class="h5 mt-2">Записей пока нет</h2>
-  <a href="{% url 'slot_list' %}" class="btn btn-mint mt-2">Выбрать слот</a></div>
+<div class="sticker empty"><i class="bi bi-journal-x"></i>
+  {% if filtered %}
+  <h2 class="h5 mt-2">По вашему запросу записей нет</h2>
+  <a href="{% url 'submission_list' %}" class="btn btn-outline-ink mt-2">Сбросить поиск и фильтры</a>
+  {% else %}
+  <h2 class="h5 mt-2">Записей пока нет</h2>
+  <a href="{% url 'slot_list' %}" class="btn btn-mint mt-2">Выбрать слот</a>
+  {% endif %}
+</div>
 {% endif %}
 {% endblock %}

@@ -1,0 +1,6 @@
+{# Partial: ошибки фильтров (неверные значения из адресной строки). #}
+{% if form.errors %}
+<div class="small text-danger fw-bold mt-2">
+  {% for field, errors in form.errors.items %}{% for error in errors %}<div><i class="bi bi-exclamation-circle"></i> {{ error }}</div>{% endfor %}{% endfor %}
+</div>
+{% endif %}

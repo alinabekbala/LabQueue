@@ -1,0 +1,28 @@
+{# Панель поиска и фильтров таблицы записей. Сортировка — по клику на заголовок колонки (скрытое поле sort). #}
+<form method="get" class="sticker filter-card mb-3">
+  {{ form.sort }}
+  <div class="row g-2 align-items-end">
+    <div class="col-lg-5 col-md-12">
+      <label class="form-label small fw-bold mb-1" for="{{ form.q.id_for_label }}">Поиск</label>
+      {{ form.q }}
+    </div>
+    <div class="col-lg-3 col-md-4">
+      <label class="form-label small fw-bold mb-1" for="{{ form.status.id_for_label }}">Статус</label>
+      {{ form.status }}
+    </div>
+    <div class="col-lg-4 col-md-5">
+      <label class="form-label small fw-bold mb-1" for="{{ form.subject.id_for_label }}">Дисциплина</label>
+      {{ form.subject }}
+    </div>
+    <div class="col-lg-3 col-md-3">
+      <label class="form-label small fw-bold mb-1" for="{{ form.lab_number.id_for_label }}">Лабораторная №</label>
+      {{ form.lab_number }}
+    </div>
+    <div class="col-lg-9 col-md-12 d-flex flex-wrap align-items-center gap-2">
+      <button class="btn btn-mint" type="submit"><i class="bi bi-search"></i> Найти</button>
+      <a href="{% url 'submission_list' %}" class="btn btn-outline-ink"><i class="bi bi-x-circle"></i> Сбросить</a>
+      <span class="ms-auto small fw-bold">{% include "main/_list_summary.html" %}</span>
+    </div>
+  </div>
+  {% include "main/_form_errors.html" %}
+</form>

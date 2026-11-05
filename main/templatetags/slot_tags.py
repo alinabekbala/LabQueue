@@ -7,6 +7,7 @@
 * ``nav_badge``   — inclusion_tag: счётчик в меню, зависит от роли пользователя.
 """
 from django import template
+from django.core.paginator import Paginator
 from django.db.models import Count, F
 
 from main.models import LabSlot, Submission
@@ -56,3 +57,54 @@ def nav_badge(context):
     if user.is_staff:
         return {"count": waiting.count(), "title": "Записей ждёт проверки"}
     return {"count": waiting.filter(student=user).count(), "title": "Ваших записей ждёт защиты"}
+
+
+# ---------- ЛЗ 10: списки, сортировка, пагинация ----------
+@register.simple_tag(takes_context=True)
+def url_replace(context, **kwargs):
+    """Строка запроса текущей страницы с заменой параметров.
+
+    {% url_replace page=3 %} -> «q=веб&sort=free&page=3»: поиск и фильтры сохраняются.
+    """
+    query = context["request"].GET.copy()
+    for key, value in kwargs.items():
+        if value in (None, ""):
+            query.pop(key, None)
+        else:
+            query[key] = value
+    return query.urlencode()
+
+
+@register.inclusion_tag("main/_sort_th.html", takes_context=True)
+def sort_th(context, field, label):
+    """Заголовок колонки: клик сортирует по возрастанию, повторный клик — по убыванию."""
+    query = context["request"].GET.copy()
+    current = context.get("current_sort", "")
+    query["sort"] = "-" + field if current == field else field
+    query.pop("page", None)                       # при смене сортировки — на первую страницу
+    arrow = "▲" if current == field else "▼" if current == "-" + field else ""
+    return {"url": "?" + query.urlencode(), "label": label, "arrow": arrow}
+
+
+@register.inclusion_tag("main/_pagination.html", takes_context=True)
+def pagination(context, page_obj):
+    """Постраничная навигация с сохранением поиска и фильтров."""
+    request = context["request"]
+
+    def link(number):
+        query = request.GET.copy()
+        query["page"] = number
+        return "?" + query.urlencode()
+
+    items = []
+    for number in page_obj.paginator.get_elided_page_range(
+            page_obj.number, on_each_side=1, on_ends=1):
+        gap = number == Paginator.ELLIPSIS
+        items.append({"number": number, "gap": gap,
+                      "url": None if gap else link(number),
+                      "current": number == page_obj.number})
+    return {
+        "page_obj": page_obj, "items": items,
+        "prev_url": link(page_obj.previous_page_number()) if page_obj.has_previous() else None,
+        "next_url": link(page_obj.next_page_number()) if page_obj.has_next() else None,
+    }

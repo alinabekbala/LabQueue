@@ -65,6 +65,7 @@ class LabSlot(models.Model):
         verbose_name = "Слот защиты"
         verbose_name_plural = "Слоты защиты"
         ordering = ["date_time"]
+        indexes = [models.Index(fields=["date_time"], name="slot_date_idx")]  # сортировка и период дат (ЛЗ 10)
 
     def __str__(self):
         return f"{self.subject.title} | {self.date_time:%d.%m %H:%M} ({self.classroom})"
@@ -122,6 +123,10 @@ class Submission(models.Model):
         verbose_name = "Запись на защиту"
         verbose_name_plural = "Записи на защиту"
         ordering = ["slot__date_time", "created_at"]
+        indexes = [  # поля, по которым фильтруют и сортируют таблицу записей (ЛЗ 10)
+            models.Index(fields=["status"], name="sub_status_idx"),
+            models.Index(fields=["lab_number"], name="sub_lab_idx"),
+        ]
 
     def __str__(self):
         return f"{self.student_name} ({self.group_name}) — лаба №{self.lab_number}"

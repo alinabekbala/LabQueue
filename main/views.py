@@ -8,6 +8,7 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.views import LoginView
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
 from django.db.models import Count
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -17,6 +18,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from . import state
+from .filters import SlotFilterForm, SubmissionFilterForm
 from .forms import LabSlotForm, LoginForm, RegisterForm, SubmissionForm
 from .models import LabSlot, Subject, Submission
 
@@ -66,32 +68,38 @@ class RememberLoginView(LoginView):
 
 
 # ---------- Слоты ----------
-def slot_list_view(request):
-    """READ: список слотов с фильтром по дисциплине.
+SLOTS_PER_PAGE = 6
+SUBMISSIONS_PER_PAGE = 10
 
-    ЛЗ 8: фильтр, список просмотренных слотов и счётчик визитов лежат в
+
+def slot_list_view(request):
+    """READ: список слотов с поиском, фильтрами, сортировкой и пагинацией (ЛЗ 10).
+
+    ЛЗ 8: фильтр дисциплины, список просмотренных слотов и счётчик визитов лежат в
     СЕССИИ, а время прошлого визита — в COOKIE.
     """
     session = request.session
     session[state.SESSION_VISITS] = session.get(state.SESSION_VISITS, 0) + 1
 
-    # Фильтр: пришёл в адресе (?subject=2) — запоминаем, не пришёл — берём из сессии.
+    # Параметры фильтра берём из адреса; дисциплину, если её не указали, — из сессии.
+    data = request.GET.copy()
     filter_restored = False
-    if "subject" in request.GET:
-        selected = request.GET["subject"]
-        if selected == "" or selected.isdigit():
-            session[state.SESSION_FILTER] = selected
-        else:
-            selected = ""
-    else:
-        selected = session.get(state.SESSION_FILTER, "")
-        filter_restored = bool(selected)
+    if "subject" not in data and session.get(state.SESSION_FILTER):
+        data["subject"] = session[state.SESSION_FILTER]
+        filter_restored = True
+    form = SlotFilterForm(data)
 
-    slots = LabSlot.objects.select_related("subject", "teacher").annotate(
-        taken_count=Count("submissions")
-    )
-    if selected.isdigit():
-        slots = slots.filter(subject_id=int(selected))
+    # Выбранную дисциплину запоминаем в сессии: пустое значение = сброс,
+    # неверное значение (мусор в адресе) игнорируем.
+    subject = form.cleaned().get("subject")
+    selected = str(subject.pk) if subject else ""
+    if "subject" in request.GET and (request.GET["subject"] == "" or subject):
+        session[state.SESSION_FILTER] = selected
+
+    base = LabSlot.objects.select_related("subject", "teacher")
+    slots = form.apply(base)
+    paginator = Paginator(slots, SLOTS_PER_PAGE)
+    page_obj = paginator.get_page(request.GET.get("page"))  # неверный номер -> ближайшая страница
 
     # Недавно просмотренные слоты: в сессии хранятся только id, объекты берём из БД.
     viewed_ids = session.get(state.SESSION_VIEWED, [])
@@ -99,10 +107,12 @@ def slot_list_view(request):
     recent_slots = [viewed_by_id[i] for i in viewed_ids if i in viewed_by_id]
 
     response = render(request, "main/slot_list.html", {
-        "slots": slots,
-        "filtered": bool(selected),
-        "subjects": Subject.objects.all(),
+        "form": form,
         "selected": selected,
+        "slots": page_obj,
+        "page_obj": page_obj,
+        "current_sort": form.current_sort,
+        "filtered": form.is_filtered,
         "filter_restored": filter_restored,
         "recent_slots": recent_slots,
         "visits": session[state.SESSION_VISITS],
@@ -153,12 +163,21 @@ def slot_delete_view(request, pk):
 # ---------- Записи на защиту ----------
 @login_required
 def submission_list_view(request):
-    """READ: студент видит свои записи, преподаватель — все."""
+    """READ: студент видит свои записи, преподаватель — все (ЛЗ 10: поиск,
+    фильтры, сортировка по колонкам и пагинация)."""
     qs = Submission.objects.select_related("slot__subject", "slot__teacher")
     if not is_teacher(request.user):
-        qs = qs.filter(student=request.user)
+        qs = qs.filter(student=request.user)   # права проверяем ДО поиска и фильтров
+    form = SubmissionFilterForm(request.GET)
+    paginator = Paginator(form.apply(qs), SUBMISSIONS_PER_PAGE)
+    page_obj = paginator.get_page(request.GET.get("page"))
     return render(request, "main/submission_list.html", {
-        "submissions": qs, "status_choices": Submission.STATUS_CHOICES,
+        "form": form,
+        "submissions": page_obj,
+        "page_obj": page_obj,
+        "current_sort": form.current_sort,
+        "filtered": form.is_filtered,
+        "status_choices": Submission.STATUS_CHOICES,
     })
 
 

@@ -6,13 +6,8 @@
   <h1 class="h2 page-title mb-0"><i class="bi bi-calendar-week"></i> <span class="marker">Слоты защиты</span></h1>
 </div>
 
-<form method="get" class="d-flex gap-2 mb-3">
-  <select name="subject" class="form-select w-auto" onchange="this.form.submit()">
-    <option value="">Все дисциплины</option>
-    {% for s in subjects %}<option value="{{ s.id }}" {% if selected == s.id|stringformat:"s" %}selected{% endif %}>{{ s.title }}</option>{% endfor %}
-  </select>
-  <noscript><button class="btn btn-ink">Показать</button></noscript>
-</form>
+{# ЛЗ 10: поиск, фильтры и сортировка (обычная форма GET) #}
+{% include "main/_slot_filters.html" %}
 
 {# Компонент (inclusion_tag): сам получает данные, view страницы про него не знает #}
 {% top_free_slots 3 %}
@@ -38,4 +33,6 @@
 <div class="row g-4 mb-5">
   {% include "main/_slot_cards.html" %}
 </div>
+{# ЛЗ 10: пагинация сохраняет поиск, фильтры и сортировку в адресе #}
+{% pagination page_obj %}
 {% endblock %}
