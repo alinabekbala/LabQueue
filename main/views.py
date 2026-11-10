@@ -14,6 +14,7 @@ from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.cache import patch_vary_headers
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
@@ -29,6 +30,17 @@ def is_teacher(user):
 
 
 teacher_required = user_passes_test(is_teacher, login_url="login")
+
+
+def is_ajax(request):
+    """ЛЗ 11: AJAX-запрос помечается заголовком X-Requested-With (его добавляет dynamic.js)."""
+    return request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+
+def _with_vary(response):
+    """Один адрес отдаёт то полную страницу, то фрагмент: кэш браузера должен их различать."""
+    patch_vary_headers(response, ("X-Requested-With",))
+    return response
 
 
 def _can_manage(user, submission):
@@ -77,9 +89,13 @@ def slot_list_view(request):
 
     ЛЗ 8: фильтр дисциплины, список просмотренных слотов и счётчик визитов лежат в
     СЕССИИ, а время прошлого визита — в COOKIE.
+    ЛЗ 11: этот же view отвечает и на AJAX-запрос: тогда он отдаёт не всю страницу,
+    а только обновляемые части (счётчик, ошибки, карточки, пагинацию).
     """
+    ajax = is_ajax(request)
     session = request.session
-    session[state.SESSION_VISITS] = session.get(state.SESSION_VISITS, 0) + 1
+    if not ajax:   # AJAX-обновление списка не считается «открытием главной страницы»
+        session[state.SESSION_VISITS] = session.get(state.SESSION_VISITS, 0) + 1
 
     # Параметры фильтра берём из адреса; дисциплину, если её не указали, — из сессии.
     data = request.GET.copy()
@@ -101,29 +117,35 @@ def slot_list_view(request):
     paginator = Paginator(slots, SLOTS_PER_PAGE)
     page_obj = paginator.get_page(request.GET.get("page"))  # неверный номер -> ближайшая страница
 
-    # Недавно просмотренные слоты: в сессии хранятся только id, объекты берём из БД.
-    viewed_ids = session.get(state.SESSION_VIEWED, [])
-    viewed_by_id = LabSlot.objects.select_related("subject").in_bulk(viewed_ids)
-    recent_slots = [viewed_by_id[i] for i in viewed_ids if i in viewed_by_id]
-
-    response = render(request, "main/slot_list.html", {
+    context = {
         "form": form,
         "selected": selected,
         "slots": page_obj,
         "page_obj": page_obj,
         "current_sort": form.current_sort,
         "filtered": form.is_filtered,
+    }
+    if ajax:
+        return _with_vary(render(request, "main/_slot_fragment.html", context))
+
+    # Недавно просмотренные слоты: в сессии хранятся только id, объекты берём из БД.
+    viewed_ids = session.get(state.SESSION_VIEWED, [])
+    viewed_by_id = LabSlot.objects.select_related("subject").in_bulk(viewed_ids)
+    recent_slots = [viewed_by_id[i] for i in viewed_ids if i in viewed_by_id]
+
+    context.update({
         "filter_restored": filter_restored,
         "recent_slots": recent_slots,
         "visits": session[state.SESSION_VISITS],
         "last_visit": state.read_last_visit(request),   # из cookie ДО обновления
     })
+    response = render(request, "main/slot_list.html", context)
     # Обновляем cookie «последний визит» (метка времени в секундах).
     response.set_cookie(
         state.LAST_VISIT_COOKIE, str(int(timezone.now().timestamp())),
         max_age=state.LAST_VISIT_MAX_AGE, samesite="Lax",
     )
-    return response
+    return _with_vary(response)
 
 
 @teacher_required
@@ -171,14 +193,17 @@ def submission_list_view(request):
     form = SubmissionFilterForm(request.GET)
     paginator = Paginator(form.apply(qs), SUBMISSIONS_PER_PAGE)
     page_obj = paginator.get_page(request.GET.get("page"))
-    return render(request, "main/submission_list.html", {
+    context = {
         "form": form,
         "submissions": page_obj,
         "page_obj": page_obj,
         "current_sort": form.current_sort,
         "filtered": form.is_filtered,
         "status_choices": Submission.STATUS_CHOICES,
-    })
+    }
+    # ЛЗ 11: на AJAX-запрос отдаём только фрагмент (счётчик, ошибки, таблица, страницы)
+    template = "main/_submission_fragment.html" if is_ajax(request) else "main/submission_list.html"
+    return _with_vary(render(request, template, context))
 
 
 @login_required
@@ -234,12 +259,22 @@ def submission_update_view(request, pk):
 
 @login_required
 def submission_delete_view(request, pk):
-    """DELETE: удаление записи с подтверждением."""
+    """DELETE: удаление записи с подтверждением.
+
+    Без JavaScript работает страница подтверждения и redirect. ЛЗ 11: JavaScript
+    шлёт тот же POST через fetch и получает JSON, страница при этом не перезагружается.
+    """
     submission = get_object_or_404(Submission, pk=pk)
+    ajax = is_ajax(request)
     if not _can_manage(request.user, submission):
+        if ajax:
+            return JsonResponse({"ok": False, "error": "Недостаточно прав"}, status=403)
         raise PermissionDenied
     if request.method == "POST":
         submission.delete()
+        if ajax:   # flash-сообщение не нужно: ответ покажет уведомление сам
+            return JsonResponse({"ok": True, "message": "Запись удалена",
+                                 "waiting": Submission.waiting_for(request.user)})
         messages.success(request, "Запись удалена.")
         return redirect("submission_list")
     return render(request, "main/submission_delete.html", {"submission": submission})
@@ -278,7 +313,29 @@ def submission_status_view(request, pk):
         return JsonResponse({"ok": False, "error": "Неизвестный статус"}, status=400)
     submission.status = status
     submission.save(update_fields=["status"])
-    return JsonResponse({"ok": True, "status": status, "label": submission.get_status_display()})
+    return JsonResponse({"ok": True, "status": status, "label": submission.get_status_display(),
+                         "waiting": Submission.waiting_for(request.user)})
+
+
+@login_required
+def booking_check_view(request, slot_id):
+    """AJAX (GET, JSON): проверка «на лету» — нет ли уже такой записи на этом слоте (ЛЗ 11).
+
+    Это подсказка, пока студент вводит данные. Окончательную проверку,
+    как и раньше, делает форма SubmissionForm.clean() при отправке.
+    """
+    slot = get_object_or_404(LabSlot, pk=slot_id)
+    name = " ".join(request.GET.get("student_name", "").split())
+    try:
+        lab = int(request.GET.get("lab_number", ""))
+    except ValueError:
+        lab = 0
+    if len(name.split()) < 2 or not 1 <= lab <= 20:
+        return JsonResponse({"ok": True, "checked": False, "message": ""})
+    if slot.submissions.filter(student_name__iexact=name, lab_number=lab).exists():
+        return JsonResponse({"ok": False, "checked": True,
+                             "message": "Этот студент уже записан на этот слот с этой лабораторной."})
+    return JsonResponse({"ok": True, "checked": True, "message": "Такой записи ещё нет, можно записываться."})
 
 
 # ---------- Состояние приложения: cookies и сессия (ЛЗ 8) ----------

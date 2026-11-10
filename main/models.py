@@ -130,3 +130,9 @@ class Submission(models.Model):
 
     def __str__(self):
         return f"{self.student_name} ({self.group_name}) — лаба №{self.lab_number}"
+
+    @classmethod
+    def waiting_for(cls, user):
+        """Сколько записей ждёт защиты: у преподавателя — все, у студента — только его (ЛЗ 9, ЛЗ 11)."""
+        waiting = cls.objects.filter(status=cls.STATUS_WAITING)
+        return waiting.count() if user.is_staff else waiting.filter(student=user).count()

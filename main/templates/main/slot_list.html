@@ -30,9 +30,6 @@
 </div>
 {% endif %}
 
-<div class="row g-4 mb-5">
-  {% include "main/_slot_cards.html" %}
-</div>
-{# ЛЗ 10: пагинация сохраняет поиск, фильтры и сортировку в адресе #}
-{% pagination page_obj %}
+{# Карточки и пагинация: эту часть dynamic.js (ЛЗ 11) заменяет при каждом AJAX-ответе #}
+{% include "main/_slot_results.html" %}
 {% endblock %}

@@ -1,5 +1,6 @@
 {# Панель поиска и фильтров таблицы записей. Сортировка — по клику на заголовок колонки (скрытое поле sort). #}
-<form method="get" class="sticker filter-card mb-3">
+{# ЛЗ 11: data-ajax-list — dynamic.js перехватывает форму и обновляет таблицу через fetch #}
+<form method="get" class="sticker filter-card mb-3" data-ajax-list>
   {{ form.sort }}
   <div class="row g-2 align-items-end">
     <div class="col-lg-5 col-md-12">
@@ -21,8 +22,8 @@
     <div class="col-lg-9 col-md-12 d-flex flex-wrap align-items-center gap-2">
       <button class="btn btn-mint" type="submit"><i class="bi bi-search"></i> Найти</button>
       <a href="{% url 'submission_list' %}" class="btn btn-outline-ink"><i class="bi bi-x-circle"></i> Сбросить</a>
-      <span class="ms-auto small fw-bold">{% include "main/_list_summary.html" %}</span>
+      <span class="ms-auto small fw-bold" id="list-summary">{% include "main/_list_summary.html" %}</span>
     </div>
   </div>
-  {% include "main/_form_errors.html" %}
+  <div id="list-errors">{% include "main/_form_errors.html" %}</div>
 </form>

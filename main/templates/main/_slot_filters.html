@@ -1,5 +1,6 @@
 {# Панель поиска, фильтров и сортировки слотов. Обычная форма GET: параметры остаются в адресе. #}
-<form method="get" class="sticker filter-card mb-3">
+{# ЛЗ 11: data-ajax-list — dynamic.js перехватывает форму и обновляет список через fetch (без JS форма работает как раньше) #}
+<form method="get" class="sticker filter-card mb-3" data-ajax-list>
   <div class="row g-2 align-items-end">
     <div class="col-lg-4 col-md-6">
       <label class="form-label small fw-bold mb-1" for="{{ form.q.id_for_label }}">Поиск</label>
@@ -36,7 +37,7 @@
     <button class="btn btn-mint" type="submit"><i class="bi bi-search"></i> Найти</button>
     {# ?subject= очищает и запомненный в сессии фильтр дисциплины (ЛЗ 8) #}
     <a href="{% url 'slot_list' %}?subject=" class="btn btn-outline-ink"><i class="bi bi-x-circle"></i> Сбросить</a>
-    <span class="ms-auto small fw-bold">{% include "main/_list_summary.html" %}</span>
+    <span class="ms-auto small fw-bold" id="list-summary">{% include "main/_list_summary.html" %}</span>
   </div>
-  {% include "main/_form_errors.html" %}
+  <div id="list-errors">{% include "main/_form_errors.html" %}</div>
 </form>

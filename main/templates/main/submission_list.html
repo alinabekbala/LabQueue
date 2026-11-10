@@ -1,62 +1,26 @@
 {% extends 'main/base.html' %}
 {% block title %}Записи{% endblock %}
 {% block content %}
-{% load slot_tags %}
 <h1 class="h2 page-title"><i class="bi bi-card-checklist"></i>
   <span class="marker">{% if user.is_staff %}Все записи студентов{% else %}Мои записи{% endif %}</span></h1>
-{# ЛЗ 10: поиск и фильтры #}
+{# ЛЗ 10: поиск и фильтры. ЛЗ 11: форма с data-ajax-list обновляет таблицу через fetch #}
 {% include "main/_submission_filters.html" %}
 
-{% if submissions %}
-<div class="table-responsive table-sticker">
-  <table class="table table-hover align-middle mb-0">
-    <thead><tr>
-      <th>{% sort_th "student" "Студент" %}</th>
-      <th>{% sort_th "group" "Группа" %}</th>
-      <th>{% sort_th "subject" "Дисциплина" %}</th>
-      <th>{% sort_th "slot" "Слот" %}</th>
-      <th>{% sort_th "lab" "Лаба" %}</th>
-      <th>Репозиторий</th>
-      <th>{% sort_th "status" "Статус" %}</th>
-      <th></th></tr></thead>
-    <tbody>
-    {% for sub in submissions %}
-      <tr>
-        <td class="fw-bold">{{ sub.student_name }}</td>
-        <td>{{ sub.group_name }}</td>
-        <td>{{ sub.slot.subject.title }}</td>
-        <td>{{ sub.slot.date_time|date:"d.m H:i" }}</td>
-        <td>№{{ sub.lab_number }}</td>
-        <td><a href="{{ sub.github_url }}" target="_blank" rel="noopener"><i class="bi bi-github"></i></a></td>
-        <td>
-          <span class="badge-status js-status-badge st-{{ sub.status }}">{{ sub.get_status_display }}</span>
-          {% if user.is_staff %}
-          {# Событие change -> fetch POST (dynamic.js): статус меняется без перезагрузки #}
-          <select class="form-select form-select-sm mt-1 js-status-select" data-url="{% url 'submission_status' sub.pk %}" data-current="{{ sub.status }}" aria-label="Статус записи">
-            {% for value, label in status_choices %}<option value="{{ value }}" {% if value == sub.status %}selected{% endif %}>{{ label }}</option>{% endfor %}
-          </select>
-          {% endif %}
-        </td>
-        <td class="text-end text-nowrap">
-          <a href="{% url 'submission_update' sub.pk %}" class="btn btn-sm btn-outline-ink"><i class="bi bi-pencil"></i></a>
-          <a href="{% url 'submission_delete' sub.pk %}" class="btn btn-sm btn-danger-soft"><i class="bi bi-trash"></i></a>
-        </td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
+{# Таблица (или «ничего не найдено») и пагинация: эту часть dynamic.js заменяет при каждом AJAX-ответе #}
+{% include "main/_submission_results.html" %}
+
+{# ЛЗ 11: окно подтверждения удаления (Bootstrap modal), управляется из dynamic.js #}
+<div class="modal fade" id="confirm-delete" tabindex="-1" aria-labelledby="confirm-delete-title" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content sticker">
+    <div class="modal-header">
+      <h2 class="modal-title h5" id="confirm-delete-title"><i class="bi bi-exclamation-triangle"></i> Удалить запись?</h2>
+      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+    </div>
+    <div class="modal-body"><p class="mb-0 fs-5" id="confirm-delete-text"></p></div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline-ink" data-bs-dismiss="modal">Отмена</button>
+      <button type="button" class="btn btn-danger-soft" id="confirm-delete-yes">Да, удалить</button>
+    </div>
+  </div></div>
 </div>
-{# ЛЗ 10: пагинация #}
-{% pagination page_obj %}
-{% else %}
-<div class="sticker empty"><i class="bi bi-journal-x"></i>
-  {% if filtered %}
-  <h2 class="h5 mt-2">По вашему запросу записей нет</h2>
-  <a href="{% url 'submission_list' %}" class="btn btn-outline-ink mt-2">Сбросить поиск и фильтры</a>
-  {% else %}
-  <h2 class="h5 mt-2">Записей пока нет</h2>
-  <a href="{% url 'slot_list' %}" class="btn btn-mint mt-2">Выбрать слот</a>
-  {% endif %}
-</div>
-{% endif %}
 {% endblock %}

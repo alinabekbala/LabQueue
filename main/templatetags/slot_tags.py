@@ -53,10 +53,8 @@ def nav_badge(context):
     user = context.get("user")
     if user is None or not user.is_authenticated:
         return {"count": 0, "title": ""}
-    waiting = Submission.objects.filter(status=Submission.STATUS_WAITING)
-    if user.is_staff:
-        return {"count": waiting.count(), "title": "Записей ждёт проверки"}
-    return {"count": waiting.filter(student=user).count(), "title": "Ваших записей ждёт защиты"}
+    title = "Записей ждёт проверки" if user.is_staff else "Ваших записей ждёт защиты"
+    return {"count": Submission.waiting_for(user), "title": title}
 
 
 # ---------- ЛЗ 10: списки, сортировка, пагинация ----------

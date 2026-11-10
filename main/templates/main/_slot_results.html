@@ -1,0 +1,8 @@
+{% load slot_tags %}
+{# ЛЗ 11: обновляемая часть страницы слотов (карточки + пагинация). Её же отдаёт AJAX-ответ. #}
+<div id="list-body">
+  <div class="row g-4 mb-5">
+    {% include "main/_slot_cards.html" %}
+  </div>
+  {% pagination page_obj %}
+</div>

@@ -19,6 +19,8 @@
     {% endif %}
     <form method="post">{% csrf_token %}
       {% include 'main/_form_fields.html' %}
+      {# ЛЗ 11: подсказка «на лету» — dynamic.js спрашивает сервер, нет ли уже такой записи #}
+      <div class="mb-3" style="min-height:1.5rem"><div class="live-hint" id="booking-hint" data-url="{% url 'book_check' slot.id %}" aria-live="polite"></div></div>
       <button class="btn btn-mint w-100 py-2" id="book-submit"><i class="bi bi-check2-circle"></i> Подтвердить запись</button>
     </form>
   </div>

@@ -120,7 +120,7 @@ class StatusAjaxTests(BaseTestCase):
         self.client.login(username="teach", password="pass12345!")
         r = self.post(sub, {"status": "PASSED"})
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.json(), {"ok": True, "status": "PASSED", "label": "Зачтено"})
+        self.assertEqual(r.json(), {"ok": True, "status": "PASSED", "label": "Зачтено", "waiting": 0})
         sub.refresh_from_db()
         self.assertEqual(sub.status, Submission.STATUS_PASSED)
 

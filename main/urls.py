@@ -22,6 +22,8 @@ urlpatterns = [
     # динамические компоненты и AJAX (ЛЗ 9)
     path("slots/<int:pk>/seats/", views.slot_seats_view, name="slot_seats"),
     path("submission/<int:pk>/status/", views.submission_status_view, name="submission_status"),
+    # AJAX-проверка «на лету» при записи (ЛЗ 11)
+    path("book/<int:slot_id>/check/", views.booking_check_view, name="book_check"),
     # состояние приложения: сессии и cookies (ЛЗ 8)
     path("theme/<str:theme>/", views.set_theme_view, name="set_theme"),
     path("state/", views.state_view, name="state"),

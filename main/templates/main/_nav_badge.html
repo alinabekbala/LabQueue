@@ -1,2 +1,3 @@
-{# Шаблон компонента nav_badge: показывается только если число больше нуля. #}
-{% if count %}<span class="nav-count" title="{{ title }}">{{ count }}</span>{% endif %}
+{# Шаблон компонента nav_badge: кружок показывается, только если число больше нуля. #}
+{# Обёртка #nav-badge есть всегда: dynamic.js (ЛЗ 11) обновляет число без перезагрузки страницы. #}
+<span id="nav-badge" data-title="{{ title }}">{% if count %}<span class="nav-count" title="{{ title }}">{{ count }}</span>{% endif %}</span>

@@ -100,3 +100,13 @@ h1,h2,h3,h4,h5,.brand{font-family:'Unbounded','Nunito',sans-serif; letter-spacin
 .pagination .page-item.active .page-link{background:var(--sun);border-color:var(--edge);color:#1f2a44}
 .pagination .page-item.disabled .page-link{opacity:.5}
 .pagination .page-link:hover{background:var(--sun);color:#1f2a44}
+/* ЛЗ 11: обновление списков без перезагрузки, уведомления */
+#list-body{transition:opacity .15s}
+#list-body.is-loading{opacity:.4;pointer-events:none}
+.toast-box{position:fixed;right:1rem;bottom:1rem;z-index:1090;display:flex;flex-direction:column;gap:.5rem;max-width:min(22rem,calc(100vw - 2rem))}
+.app-toast{padding:.7rem 1rem;border:2px solid var(--edge);border-radius:12px;background:var(--card);color:var(--text);font-weight:700;
+  box-shadow:4px 4px 0 var(--edge);transition:opacity .5s,transform .5s}
+.app-toast.ok{border-left:8px solid var(--mint)}
+.app-toast.err{border-left:8px solid var(--coral)}
+.app-toast.hide{opacity:0;transform:translateY(8px)}
+#confirm-delete .modal-content{color:var(--text)}
