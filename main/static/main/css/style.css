@@ -102,7 +102,10 @@ h1,h2,h3,h4,h5,.brand{font-family:'Unbounded','Nunito',sans-serif; letter-spacin
 .pagination .page-link:hover{background:var(--sun);color:#1f2a44}
 /* ЛЗ 11: обновление списков без перезагрузки, уведомления */
 #list-body{transition:opacity .15s}
+#list-body{position:relative}
 #list-body.is-loading{opacity:.4;pointer-events:none}
+#list-body.is-loading::before{content:"Загрузка…";position:absolute;left:50%;top:1rem;transform:translateX(-50%);z-index:5;
+  padding:.3rem .9rem;border:2px solid var(--edge);border-radius:999px;background:var(--card);color:var(--text);font-weight:800}
 .toast-box{position:fixed;right:1rem;bottom:1rem;z-index:1090;display:flex;flex-direction:column;gap:.5rem;max-width:min(22rem,calc(100vw - 2rem))}
 .app-toast{padding:.7rem 1rem;border:2px solid var(--edge);border-radius:12px;background:var(--card);color:var(--text);font-weight:700;
   box-shadow:4px 4px 0 var(--edge);transition:opacity .5s,transform .5s}

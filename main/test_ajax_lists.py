@@ -124,11 +124,11 @@ class DeleteAjaxTests(ListsBase):
         self.client.login(username="stud", password="pass12345!")
         self.assertEqual(self.delete(first, **AJAX).json()["waiting"], 1)
 
-    def test_foreign_submission_gives_json_403_and_stays(self):
+    def test_foreign_submission_gives_json_404_and_stays(self):
         sub = self.make_submission(user=self.other, name="Чужой Студент")
         self.client.login(username="stud", password="pass12345!")
         r = self.delete(sub, **AJAX)
-        self.assertEqual(r.status_code, 403)
+        self.assertEqual(r.status_code, 404)
         self.assertFalse(r.json()["ok"])
         self.assertTrue(Submission.objects.filter(pk=sub.pk).exists())
 

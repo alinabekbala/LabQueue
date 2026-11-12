@@ -96,10 +96,12 @@ class ViewTests(BaseTestCase):
         self.assertEqual(sub.status, Submission.STATUS_WAITING)
 
     def test_student_cannot_edit_foreign_submission(self):
+        """ЛЗ 12: чужая запись для студента «не существует» (404), а не 403."""
         sub = self.make_submission(user=self.other)
         self.client.login(username="stud", password="pass12345!")
-        self.assertEqual(self.client.get(reverse("submission_update", args=[sub.pk])).status_code, 403)
-        self.assertEqual(self.client.post(reverse("submission_delete", args=[sub.pk])).status_code, 403)
+        self.assertEqual(self.client.get(reverse("submission_update", args=[sub.pk])).status_code, 404)
+        self.assertEqual(self.client.post(reverse("submission_delete", args=[sub.pk])).status_code, 404)
+        self.assertTrue(Submission.objects.filter(pk=sub.pk).exists())
 
     def test_student_sees_only_own(self):
         self.make_submission(user=self.other)

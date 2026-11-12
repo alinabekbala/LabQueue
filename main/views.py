@@ -7,7 +7,6 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.views import LoginView
-from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db.models import Count
 from django.http import Http404, JsonResponse
@@ -43,9 +42,15 @@ def _with_vary(response):
     return response
 
 
-def _can_manage(user, submission):
-    """Править/удалять запись может её автор или преподаватель."""
-    return is_teacher(user) or submission.student_id == user.id
+def _own_submission_or_404(user, pk):
+    """Запись по id с проверкой владельца прямо в запросе (ЛЗ 12, управление доступом).
+
+    Преподаватель видит любую запись, студент только свою. Чужая запись даёт 404,
+    как будто её нет: подмена id в адресе (/submission/42/ -> /submission/43/)
+    не раскрывает даже того, что такая запись существует.
+    """
+    qs = Submission.objects.all() if is_teacher(user) else Submission.objects.filter(student=user)
+    return get_object_or_404(qs, pk=pk)
 
 
 # ---------- Регистрация и вход ----------
@@ -244,9 +249,7 @@ def book_slot_view(request, slot_id):
 @login_required
 def submission_update_view(request, pk):
     """UPDATE: редактирование записи (статус меняет только преподаватель)."""
-    submission = get_object_or_404(Submission, pk=pk)
-    if not _can_manage(request.user, submission):
-        raise PermissionDenied
+    submission = _own_submission_or_404(request.user, pk)
     form = SubmissionForm(request.POST or None, instance=submission,
                           user=request.user, is_teacher=is_teacher(request.user))
     if request.method == "POST" and form.is_valid():
@@ -264,12 +267,13 @@ def submission_delete_view(request, pk):
     Без JavaScript работает страница подтверждения и redirect. ЛЗ 11: JavaScript
     шлёт тот же POST через fetch и получает JSON, страница при этом не перезагружается.
     """
-    submission = get_object_or_404(Submission, pk=pk)
     ajax = is_ajax(request)
-    if not _can_manage(request.user, submission):
+    try:
+        submission = _own_submission_or_404(request.user, pk)
+    except Http404:
         if ajax:
-            return JsonResponse({"ok": False, "error": "Недостаточно прав"}, status=403)
-        raise PermissionDenied
+            return JsonResponse({"ok": False, "error": "Запись не найдена"}, status=404)
+        raise
     if request.method == "POST":
         submission.delete()
         if ajax:   # flash-сообщение не нужно: ответ покажет уведомление сам

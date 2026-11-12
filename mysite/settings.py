@@ -27,7 +27,8 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-only-insecure-key-change-m
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', '1') == '1'
 
-ALLOWED_HOSTS = []
+# Допустимые адреса сайта (защита от подмены заголовка Host). В боевом режиме задаются переменной окружения.
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if h.strip()]
 
 
 # Application definition
@@ -50,6 +51,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django.middleware.csp.ContentSecurityPolicyMiddleware',   # ЛЗ 12: заголовок Content-Security-Policy
 ]
 
 ROOT_URLCONF = 'mysite.urls'
@@ -132,3 +134,44 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # данные сесс�
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 14   # по умолчанию сессия живёт 14 дней
 SESSION_COOKIE_HTTPONLY = True           # JavaScript не видит cookie sessionid
 SESSION_COOKIE_SAMESITE = 'Lax'          # cookie не отправляется со сторонних сайтов
+
+
+# ---------- Безопасность (ЛЗ 12) ----------
+# Встроенные механизмы Django мы не отключаем, а только донастраиваем.
+
+# CSRF: токен в каждой форме и в заголовке X-CSRFToken (его кладёт dynamic.js).
+CSRF_COOKIE_HTTPONLY = True              # скрипт токен из cookie не читает: он лежит в <meta name="csrf-token">
+CSRF_COOKIE_SAMESITE = 'Lax'             # чужие сайты не могут отправить нашу cookie с POST-запросом
+
+# Защита от встраивания сайта в чужую страницу (clickjacking) и от угадывания типа файла.
+X_FRAME_OPTIONS = 'DENY'
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# CSP: браузер выполняет скрипты и грузит стили только с перечисленных адресов,
+# поэтому внедрённый <script> и скрипт с чужого сайта не сработают.
+from django.utils.csp import CSP  # noqa: E402
+
+SECURE_CSP = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, "https://cdn.jsdelivr.net"],
+    "style-src": [CSP.SELF, CSP.UNSAFE_INLINE, "https://cdn.jsdelivr.net", "https://fonts.googleapis.com"],
+    "font-src": [CSP.SELF, "https://cdn.jsdelivr.net", "https://fonts.gstatic.com"],
+    "img-src": [CSP.SELF, "data:"],
+    "connect-src": [CSP.SELF],           # fetch ходит только на наш же сайт
+    "form-action": [CSP.SELF],
+    "base-uri": [CSP.SELF],
+    "object-src": [CSP.NONE],
+    "frame-ancestors": [CSP.NONE],
+}
+
+# Боевой режим (DEBUG=0): HTTPS, защищённые cookie, HSTS и обязательный секретный ключ из окружения.
+if not DEBUG:
+    from django.core.exceptions import ImproperlyConfigured
+    if SECRET_KEY.startswith('dev-only') or len(SECRET_KEY) < 50:
+        raise ImproperlyConfigured("В боевом режиме задайте DJANGO_SECRET_KEY (50+ символов) в переменных окружения.")
+    SESSION_COOKIE_SECURE = True         # cookie сессии ходит только по HTTPS
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = os.environ.get('DJANGO_SSL_REDIRECT', '1') == '1'
+    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 365
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
