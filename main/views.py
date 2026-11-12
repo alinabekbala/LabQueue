@@ -43,14 +43,15 @@ def _with_vary(response):
 
 
 def _own_submission_or_404(user, pk):
-    """Запись по id с проверкой владельца прямо в запросе (ЛЗ 12, управление доступом).
+    """Запись по id с проверкой владельца прямо в запросе.
 
     Преподаватель видит любую запись, студент только свою. Чужая запись даёт 404,
     как будто её нет: подмена id в адресе (/submission/42/ -> /submission/43/)
     не раскрывает даже того, что такая запись существует.
     """
-    qs = Submission.objects.all() if is_teacher(user) else Submission.objects.filter(student=user)
-    return get_object_or_404(qs, pk=pk)
+    if is_teacher(user):
+        return get_object_or_404(Submission, pk=pk)
+    return get_object_or_404(Submission, pk=pk, student=user)   # как в лекции: pk=pk, user=request.user
 
 
 # ---------- Регистрация и вход ----------
