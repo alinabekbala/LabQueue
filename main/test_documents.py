@@ -40,7 +40,7 @@ def make_docx(heading="Report title", paragraph="First paragraph of the report."
     return buf.getvalue()
 
 
-def make_pdf(title="Report title", paragraph="First paragraph of the report.", table=None, picture=False):
+def make_pdf(title="Report title", paragraph="First paragraph of the report.", table=None, picture=False, extra=()):
     """Маленький настоящий PDF руками: заголовок, абзац и таблица из прямоугольников."""
     parts = [f"BT /F1 20 Tf 72 740 Td ({title}) Tj ET", f"BT /F1 11 Tf 72 700 Td ({paragraph}) Tj ET"]
     y = 640
@@ -50,6 +50,7 @@ def make_pdf(title="Report title", paragraph="First paragraph of the report.", t
             parts.append(f"{x} {y} 120 30 re S")
             parts.append(f"BT /F1 10 Tf {x + 8} {y + 10} Td ({value}) Tj ET")
         y -= 30
+    parts.extend(extra)
     if picture:                         # квадрат 200x200 пунктов, картинка 2x2 пикселя из сырых RGB-байтов
         parts.append("q 200 0 0 200 72 400 cm /Im1 Do Q")
     stream = "\n".join(parts).encode("latin-1")
@@ -236,3 +237,18 @@ class ImageTests(DocumentsBase):
         with mock.patch.object(documents.Image, "open", side_effect=OSError("bad image")):
             doc = documents.read_document(SimpleUploadedFile("p.docx", make_docx(picture=True)))
         self.assertEqual(doc.images_count, 0)
+
+
+class ColumnTests(TestCase):
+    def test_two_columns_are_read_column_by_column(self):
+        lines = []
+        for i, (left, right) in enumerate([("Left one", "Right one"), ("Left two", "Right two"), ("Left three", "Right three")]):
+            y = 600 - i * 30
+            lines += [f"BT /F1 11 Tf 72 {y} Td ({left}) Tj ET", f"BT /F1 11 Tf 380 {y} Td ({right}) Tj ET"]
+        doc = documents.read_document(SimpleUploadedFile("c.pdf", make_pdf(title="Title", paragraph="Intro", extra=lines)))
+        text = " ".join(b.text for b in doc.pages[0].blocks)
+        self.assertLess(text.index("Left three"), text.index("Right one"))   # сначала вся левая колонка
+
+    def test_single_column_text_is_unchanged(self):
+        doc = documents.read_document(SimpleUploadedFile("c.pdf", make_pdf()))
+        self.assertEqual([b.kind for b in doc.pages[0].blocks], ["heading", "paragraph"])

@@ -121,7 +121,7 @@ def _pdf_table(page, table):
         return []
     xs = _cluster([c[0] for c in cells] + [c[2] for c in cells])
     ys = _cluster([c[1] for c in cells] + [c[3] for c in cells])
-    rows = defaultdict(list)
+    rows, taken = defaultdict(list), set()
     for x0, top, x1, bottom in cells:
         c0, c1, r0, r1 = _nearest(xs, x0), _nearest(xs, x1), _nearest(ys, top), _nearest(ys, bottom)
         if c1 <= c0 or r1 <= r0:
@@ -131,7 +131,28 @@ def _pdf_table(page, table):
         if box[2] > box[0] and box[3] > box[1]:
             text = _clean(page.crop(box).extract_text())
         rows[r0].append((c0, Cell(text, c1 - c0, r1 - r0)))
+        for r in range(r0, r1):
+            taken.update((r, c) for c in range(c0, c1))
+    # достраиваем «дыры»: клетки, которых нет в PDF, превращаем в пустые, чтобы сетка была сплошной
+    for r in range(len(ys) - 1):
+        c = 0
+        while c < len(xs) - 1:
+            if (r, c) in taken:
+                c += 1
+                continue
+            start = c
+            while c < len(xs) - 1 and (r, c) not in taken:
+                c += 1
+            rows[r].append((start, Cell("", c - start, 1)))
     return [[cell for _, cell in sorted(items, key=lambda t: t[0])] for _, items in sorted(rows.items())]
+
+
+def _is_decoration(grid):
+    """Карточки и плашки слайдов (рамки с короткими подписями) pdfplumber принимает за таблицы.
+    Настоящая таблица почти не имеет пустых ячеек, у «карточки» их много."""
+    cells = [c for row in grid for c in row]
+    empty = sum(1 for c in cells if not c.text.strip())
+    return 2 <= len(grid) <= 4 and empty * 10 >= len(cells) * 3
 
 
 def _outer_tables(tables):
@@ -155,12 +176,80 @@ def _code_text(lines):
     return "\n".join(" " * int(round((l["x0"] - left) / char_w)) + l["text"].strip() for l in lines)
 
 
+def _segments(line, size):
+    """Горизонтальные куски строки: пробел шире размера шрифта разделяет колонки."""
+    if _is_mono(line["chars"]):
+        return [(line["x0"], line["x1"])]
+    chars = sorted((c for c in line["chars"] if c["text"].strip()), key=lambda c: c["x0"])
+    if not chars:
+        return []
+    parts, start, end = [], chars[0]["x0"], chars[0]["x1"]
+    for c in chars[1:]:
+        if c["x0"] - end > size * 1.0:
+            parts.append((start, end))
+            start = c["x0"]
+        end = max(end, c["x1"])
+    parts.append((start, end))
+    return parts
+
+
+def _gutters(infos):
+    """Вертикальные промежутки между колонками: они повторяются минимум в двух строках."""
+    mids = []
+    for _, parts in infos:
+        for (_, a_end), (b_start, _) in zip(parts, parts[1:]):
+            mids.append((a_end + b_start) / 2)
+    groups = []
+    for m in sorted(mids):
+        if groups and m - groups[-1][-1] <= 12:
+            groups[-1].append(m)
+        else:
+            groups.append([m])
+    return [sum(g) / len(g) for g in groups if len(g) >= 2]
+
+
 def _text_blocks(page, top, bottom, body_size):
-    """Текст страницы между двумя высотами: заголовки, абзацы, блоки кода."""
+    """Текст страницы между двумя высотами. Если на слайде текст в несколько колонок,
+    каждая колонка читается отдельно (слева направо), а не строка за строкой через всю страницу."""
     top, bottom = max(top, 0), min(bottom, page.height)
     if bottom - top < 3:
         return []
     region = page.crop((0, top, page.width, bottom))
+    lines = region.extract_text_lines(return_chars=True)
+    infos = []
+    for line in lines:
+        sizes = [c["size"] for c in line["chars"] if c["text"].strip()]
+        infos.append((line, _segments(line, median(sizes) if sizes else body_size)))
+    gutters = _gutters(infos)
+    if not gutters:
+        return _region_blocks(region, body_size)
+    # делим на полосы: «во всю ширину» (строка пересекает промежуток) и «колоночные»
+    bands, edges = [], [0] + gutters + [page.width]
+    for line, parts in infos:
+        full = any(a < g < b for a, b in parts for g in gutters)
+        if bands and bands[-1][0] == full:
+            bands[-1][1].append(line)
+        else:
+            bands.append((full, [line]))
+    blocks = []
+    for full, band in bands:
+        t, b = max(top, min(l["top"] for l in band) - 1), min(bottom, max(l["bottom"] for l in band) + 1)
+        if b - t < 3:
+            continue
+        areas = [(0, page.width)] if full else list(zip(edges, edges[1:]))
+        crops = [page.crop((x0, t, x1, b)) for x0, x1 in areas]
+        if not full:
+            # проверка: колонки в сумме должны содержать все символы полосы, иначе граница разрезала слова
+            total = sum(1 for l in band for c in l["chars"] if c["text"].strip())
+            if sum(1 for cr in crops for c in cr.chars if c["text"].strip()) != total:
+                crops = [page.crop((0, t, page.width, b))]
+        for crop in crops:
+            blocks += _region_blocks(crop, body_size)
+    return blocks
+
+
+def _region_blocks(region, body_size):
+    """Текст одной области (одна колонка): заголовки, абзацы, блоки кода."""
     blocks, current, prev, current_heading, code = [], [], None, False, []
 
     def flush():
@@ -192,7 +281,7 @@ def _text_blocks(page, top, bottom, body_size):
         gap = (line["top"] - prev["bottom"]) if prev else 0
         height = max(line["bottom"] - line["top"], 1)
         # новый блок: большой интервал или смена «заголовок/текст»
-        if current and (gap > height * 0.6 or heading != current_heading):
+        if current and (gap > height * 1.2 or heading != current_heading):
             flush()
         current.append(text)
         current_heading = heading
@@ -262,10 +351,11 @@ def read_pdf(file, name="document.pdf"):
                 body_size = median(sizes) if sizes else 10
                 blocks, top = [], 0
                 for table in sorted(_outer_tables(page.find_tables()), key=lambda t: t.bbox[1]):
-                    blocks += _text_blocks(page, top, table.bbox[1], body_size)
                     grid = _pdf_table(page, table)
-                    if grid:
-                        blocks.append(Block("table", grid=grid))
+                    if not grid or _is_decoration(grid):    # не таблица: текст читаем как обычный
+                        continue
+                    blocks += _text_blocks(page, top, table.bbox[1], body_size)
+                    blocks.append(Block("table", grid=grid))
                     top = table.bbox[3]
                 blocks += _text_blocks(page, top, page.height, body_size)
                 blocks += _pdf_images(page, budget)        # иллюстрации страницы идут после её текста

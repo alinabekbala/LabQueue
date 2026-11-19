@@ -44,7 +44,7 @@
       {% elif block.kind == "code" %}
         <pre class="bg-dark text-light p-3 rounded small my-3 overflow-auto doc-code"><code>{{ block.text }}</code></pre>
       {% elif block.kind == "image" %}
-        <img src="{{ block.src }}" alt="Изображение из документа" class="img-fluid rounded border my-2 me-2 doc-image">
+        <img src="{{ block.src }}" alt="Изображение из документа" class="rounded border my-2 me-2 doc-image" style="max-height:240px;max-width:100%;width:auto">
       {% elif block.kind == "table" %}
         <div class="table-responsive my-3"><table class="table table-bordered table-sm small align-middle doc-table">
           {% for row in block.grid %}
