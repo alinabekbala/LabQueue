@@ -63,6 +63,10 @@ class Page:
     number: int | None              # номер страницы (у Word страниц нет)
     blocks: list = field(default_factory=list)
 
+    @property
+    def has_table(self):
+        return any(b.kind == "table" for b in self.blocks)
+
 
 @dataclass
 class ParsedDocument:
@@ -121,7 +125,7 @@ def _pdf_table(page, table):
         return []
     xs = _cluster([c[0] for c in cells] + [c[2] for c in cells])
     ys = _cluster([c[1] for c in cells] + [c[3] for c in cells])
-    rows, taken = defaultdict(list), set()
+    rows, taken, found = defaultdict(list), set(), []
     for x0, top, x1, bottom in cells:
         c0, c1, r0, r1 = _nearest(xs, x0), _nearest(xs, x1), _nearest(ys, top), _nearest(ys, bottom)
         if c1 <= c0 or r1 <= r0:
@@ -130,9 +134,15 @@ def _pdf_table(page, table):
         text = ""
         if box[2] > box[0] and box[3] > box[1]:
             text = _clean(page.crop(box).extract_text())
+        found.append((c0, c1, r0, r1, text))
+    # Нарисованные прямоугольники могут перекрываться. Сначала кладём ячейки с текстом (мелкие раньше крупных),
+    # перекрытые пустые пропускаем: так таблица получается ровной сеткой без наложений.
+    for c0, c1, r0, r1, text in sorted(found, key=lambda f: (not f[4], (f[1] - f[0]) * (f[3] - f[2]), f[2], f[0])):
+        spots = {(r, c) for r in range(r0, r1) for c in range(c0, c1)}
+        if spots & taken:
+            continue
+        taken |= spots
         rows[r0].append((c0, Cell(text, c1 - c0, r1 - r0)))
-        for r in range(r0, r1):
-            taken.update((r, c) for c in range(c0, c1))
     # достраиваем «дыры»: клетки, которых нет в PDF, превращаем в пустые, чтобы сетка была сплошной
     for r in range(len(ys) - 1):
         c = 0
