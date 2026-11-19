@@ -51,7 +51,7 @@ def _own_submission_or_404(user, pk):
     """
     if is_teacher(user):
         return get_object_or_404(Submission, pk=pk)
-    return get_object_or_404(Submission, pk=pk, student=user)   # как в лекции: pk=pk, user=request.user
+    return get_object_or_404(Submission, pk=pk, student=user)
 
 
 # ---------- Регистрация и вход ----------
