@@ -48,11 +48,8 @@
       {% elif block.kind == "table" %}
         <div class="table-responsive my-3"><table class="table table-bordered table-sm small align-middle doc-table">
           {% for row in block.grid %}
-          {% if forloop.first and block.grid|length > 1 %}<thead>{% elif forloop.counter == 2 %}<tbody>{% endif %}
           <tr>{% for cell in row %}<{% if forloop.parentloop.first and block.grid|length > 1 %}th{% else %}td{% endif %}{% if cell.colspan > 1 %} colspan="{{ cell.colspan }}"{% endif %}{% if cell.rowspan > 1 %} rowspan="{{ cell.rowspan }}"{% endif %}>{{ cell.text|linebreaksbr }}</{% if forloop.parentloop.first and block.grid|length > 1 %}th{% else %}td{% endif %}>{% endfor %}</tr>
-          {% if forloop.first and block.grid|length > 1 %}</thead>{% endif %}
           {% endfor %}
-          {% if block.grid|length > 1 %}</tbody>{% endif %}
         </table></div>
       {% else %}
         <p class="mb-2">{{ block.text|linebreaksbr }}</p>
