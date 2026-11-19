@@ -27,5 +27,6 @@ urlpatterns = [
     # состояние приложения: сессии и cookies (ЛЗ 8)
     path("theme/<str:theme>/", views.set_theme_view, name="set_theme"),
     path("state/", views.state_view, name="state"),
+    path("documents/", views.document_view, name="document_view"),   # ЛЗ 13
     path("state/reset/", views.state_reset_view, name="state_reset"),
 ]

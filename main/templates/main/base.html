@@ -23,6 +23,7 @@
         <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'slot_list' %}active{% endif %}" href="{% url 'slot_list' %}"><i class="bi bi-calendar3"></i> Слоты</a></li>
         {% if user.is_authenticated %}
         <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'submission_list' %}active{% endif %}" href="{% url 'submission_list' %}"><i class="bi bi-card-checklist"></i> {% if user.is_staff %}Все записи{% else %}Мои записи{% endif %} {% nav_badge %}</a></li>
+        <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'document_view' %}active{% endif %}" href="{% url 'document_view' %}"><i class="bi bi-file-earmark-text"></i> Документы</a></li>
         {% if user.is_staff %}
         <li class="nav-item"><a class="nav-link" href="{% url 'slot_create' %}"><i class="bi bi-plus-circle"></i> Новый слот</a></li>
         <li class="nav-item"><a class="nav-link" href="{% url 'admin:index' %}"><i class="bi bi-gear"></i> Админка</a></li>

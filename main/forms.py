@@ -1,5 +1,6 @@
 # main/forms.py
 """Формы: превращают модели в HTML-формы и проверяют данные на сервере."""
+import os
 from urllib.parse import urlparse
 
 from django import forms
@@ -7,6 +8,7 @@ from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.models import User
 from django.utils import timezone
 
+from . import documents
 from .models import LabSlot, Submission
 
 ALLOWED_GIT_HOSTS = {"github.com", "www.github.com", "gitlab.com", "www.gitlab.com"}
@@ -157,3 +159,34 @@ class LabSlotForm(BootstrapMixin, forms.ModelForm):
                 "Лимит не может быть меньше числа уже записанных студентов."
             )
         return value
+
+
+class DocumentUploadForm(BootstrapMixin, forms.Form):
+    """Загрузка PDF или Word для просмотра (ЛЗ 13). Проверяем всё на сервере."""
+    file = forms.FileField(
+        label="Файл",
+        help_text="PDF или Word (.docx), не больше 5 МБ. Файл не сохраняется: он читается и сразу забывается.",
+        widget=forms.ClearableFileInput(attrs={"accept": ".pdf,.docx"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._style_fields()
+
+    def clean_file(self):
+        uploaded = self.cleaned_data["file"]
+        ext = os.path.splitext(uploaded.name)[1].lower()
+        if ext == ".doc":
+            raise forms.ValidationError("Старый формат .doc не поддерживается: сохраните файл как .docx.")
+        if ext not in documents.ALLOWED:
+            raise forms.ValidationError("Допустимы только PDF и Word (.docx).")
+        if uploaded.size > documents.MAX_SIZE:
+            raise forms.ValidationError(f"Файл больше {documents.MAX_SIZE // (1024 * 1024)} МБ.")
+        head = uploaded.read(8)
+        uploaded.seek(0)
+        # расширение можно подделать, поэтому смотрим на начало самого файла
+        if ext == ".pdf" and not head.startswith(b"%PDF-"):
+            raise forms.ValidationError("Файл не похож на PDF.")
+        if ext == ".docx" and not head.startswith(b"PK"):
+            raise forms.ValidationError("Файл не похож на документ Word (.docx).")
+        return uploaded

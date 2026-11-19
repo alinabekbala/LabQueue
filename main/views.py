@@ -18,8 +18,9 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from . import state
+from .documents import DocumentError, read_document
 from .filters import SlotFilterForm, SubmissionFilterForm
-from .forms import LabSlotForm, LoginForm, RegisterForm, SubmissionForm
+from .forms import DocumentUploadForm, LabSlotForm, LoginForm, RegisterForm, SubmissionForm
 from .models import LabSlot, Subject, Submission
 
 
@@ -415,3 +416,20 @@ def state_reset_view(request):
     response.delete_cookie(state.LAST_VISIT_COOKIE)
     response.delete_cookie(state.THEME_COOKIE)
     return response
+
+
+# ---------- Просмотр документов PDF и Word (ЛЗ 13) ----------
+@login_required
+def document_view(request):
+    """Контроллер: принимает файл, просит documents.py его прочитать, отдаёт результат шаблону.
+
+    Файл не сохраняется: он живёт только в памяти на время запроса.
+    """
+    form = DocumentUploadForm(request.POST or None, request.FILES or None)
+    document = None
+    if request.method == "POST" and form.is_valid():
+        try:
+            document = read_document(form.cleaned_data["file"])
+        except DocumentError as exc:
+            form.add_error("file", str(exc))
+    return render(request, "main/document_view.html", {"form": form, "document": document})
