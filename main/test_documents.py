@@ -252,3 +252,11 @@ class ColumnTests(TestCase):
     def test_single_column_text_is_unchanged(self):
         doc = documents.read_document(SimpleUploadedFile("c.pdf", make_pdf()))
         self.assertEqual([b.kind for b in doc.pages[0].blocks], ["heading", "paragraph"])
+
+
+class WordSpacingTests(TestCase):
+    def test_words_with_small_gap_are_not_glued(self):
+        """В некоторых PDF между словами нет пробела-символа, только маленький зазор (~2 пункта)."""
+        extra = ["BT /F1 11 Tf 72 600 Td (Hello) Tj ET", "BT /F1 11 Tf 98.7 600 Td (world) Tj ET"]
+        doc = documents.read_document(SimpleUploadedFile("g.pdf", make_pdf(extra=extra)))
+        self.assertIn("Hello world", " ".join(b.text for b in doc.pages[0].blocks))

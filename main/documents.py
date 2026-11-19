@@ -22,6 +22,7 @@ from docx.text.paragraph import Paragraph
 MAX_SIZE = 20 * 1024 * 1024         # максимальный размер загружаемого файла
 MAX_PDF_PAGES = 40                  # защита от слишком больших документов
 MAX_UNPACKED = 50 * 1024 * 1024     # защита от «бомбы» в .docx (это zip-архив)
+XTOL = 1.5                           # зазор между буквами больше 1.5 пункта считаем пробелом (иначе слова склеиваются)
 MAX_IMAGES = 40                     # сколько картинок максимум показываем в одном документе
 MAX_IMAGES_BYTES = 6 * 1024 * 1024  # и сколько данных они могут занять вместе
 MIN_IMAGE_SIDE = 40                 # значки и линии меньше 40 пунктов картинками не считаем
@@ -133,7 +134,7 @@ def _pdf_table(page, table):
         box = (max(x0 + 1, 0), max(top + 1, 0), min(x1 - 1, page.width), min(bottom - 1, page.height))
         text = ""
         if box[2] > box[0] and box[3] > box[1]:
-            text = _clean(page.crop(box).extract_text())
+            text = _clean(page.crop(box).extract_text(x_tolerance=XTOL))
         found.append((c0, c1, r0, r1, text))
     # Нарисованные прямоугольники могут перекрываться. Сначала кладём ячейки с текстом (мелкие раньше крупных),
     # перекрытые пустые пропускаем: так таблица получается ровной сеткой без наложений.
@@ -230,7 +231,7 @@ def _text_blocks(page, top, bottom, body_size):
     if bottom - top < 3:
         return []
     region = page.crop((0, top, page.width, bottom))
-    lines = region.extract_text_lines(return_chars=True)
+    lines = region.extract_text_lines(return_chars=True, x_tolerance=XTOL)
     infos = []
     for line in lines:
         sizes = [c["size"] for c in line["chars"] if c["text"].strip()]
@@ -280,7 +281,7 @@ def _region_blocks(region, body_size):
             blocks.append(Block("code", _code_text(code)))
         code = []
 
-    for line in region.extract_text_lines(return_chars=True):
+    for line in region.extract_text_lines(return_chars=True, x_tolerance=XTOL):
         text = line["text"].strip()
         if not text:
             continue
