@@ -15,14 +15,6 @@
 </div>
 
 {% if document %}
-<style>
-  .doc-sheet{max-width:794px;margin:1.25rem auto;padding:2.5rem 3rem;background:#fff;color:#1c1f33;border-radius:4px;box-shadow:0 2px 14px rgba(0,0,0,.35)}
-  .doc-sheet-wide{max-width:100%;padding:1.5rem 1.5rem}
-  .doc-sheet h3,.doc-sheet h4,.doc-sheet h5,.doc-sheet p{color:#1c1f33}
-  .doc-sheet table{--bs-table-bg:#fff;--bs-table-color:#1c1f33;--bs-border-color:#b9bdd0;color:#1c1f33}
-  .doc-sheet .doc-page-label{font-size:.75rem;color:#7a7f99;text-align:right;margin-bottom:.5rem}
-  @media(max-width:700px){.doc-sheet{padding:1.25rem}}
-</style>
 <div class="sticker p-4" id="document-result">
   <div class="d-flex flex-wrap gap-3 align-items-center mb-3">
     <h2 class="h5 mb-0"><i class="bi bi-file-earmark-{% if document.is_pdf %}pdf{% else %}word{% endif %}"></i> {{ document.name }}</h2>
@@ -41,8 +33,7 @@
   {% endif %}
 
   {% for page in document.pages %}
-    <div class="doc-sheet{% if page.has_table %} doc-sheet-wide{% endif %}" data-bs-theme="light">
-    {% if document.is_pdf %}<div class="doc-page-label">Страница {{ page.number }} из {{ document.pages|length }}</div>{% endif %}
+    {% if document.is_pdf %}<div class="small fw-bold text-muted border-top pt-3 mt-3">Страница {{ page.number }} из {{ document.pages|length }}</div>{% endif %}
     {% for block in page.blocks %}
       {% if block.kind == "heading" %}
         {% if block.level == 1 %}<h3 class="h4 mt-3">{{ block.text }}</h3>
@@ -53,7 +44,7 @@
       {% elif block.kind == "code" %}
         <pre class="bg-dark text-light p-3 rounded small my-3 overflow-auto doc-code"><code>{{ block.text }}</code></pre>
       {% elif block.kind == "image" %}
-        <img src="{{ block.src }}" alt="Изображение из документа" class="rounded border my-2 me-2 doc-image" style="max-height:320px;max-width:100%;width:auto">
+        <img src="{{ block.src }}" alt="Изображение из документа" class="rounded border my-2 me-2 doc-image" style="max-height:260px;max-width:100%;width:auto">
       {% elif block.kind == "table" %}
         <div class="table-responsive my-3"><table class="table table-bordered table-sm small align-middle doc-table">
           {% for row in block.grid %}
@@ -67,7 +58,6 @@
         <p class="mb-2">{{ block.text|linebreaksbr }}</p>
       {% endif %}
     {% endfor %}
-    </div>
   {% endfor %}
 </div>
 {% endif %}
