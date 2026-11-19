@@ -6,6 +6,7 @@
 View и шаблон ничего не знают про библиотеки: pdfplumber (PDF) и python-docx (Word).
 Файл читается в памяти и нигде не сохраняется.
 """
+import base64
 import io
 import os
 import zipfile
@@ -15,14 +16,21 @@ from statistics import median
 
 import pdfplumber
 from docx import Document
+from PIL import Image
 from docx.text.paragraph import Paragraph
 
-MAX_SIZE = 5 * 1024 * 1024          # максимальный размер загружаемого файла
+MAX_SIZE = 20 * 1024 * 1024         # максимальный размер загружаемого файла
 MAX_PDF_PAGES = 40                  # защита от слишком больших документов
 MAX_UNPACKED = 50 * 1024 * 1024     # защита от «бомбы» в .docx (это zip-архив)
+MAX_IMAGES = 40                     # сколько картинок максимум показываем в одном документе
+MAX_IMAGES_BYTES = 6 * 1024 * 1024  # и сколько данных они могут занять вместе
+MIN_IMAGE_SIDE = 40                 # значки и линии меньше 40 пунктов картинками не считаем
+Image.MAX_IMAGE_PIXELS = 40_000_000  # защита от «бомбы» в самой картинке
 ALLOWED = {".pdf": "PDF", ".docx": "Word"}
 MONO_FONTS = ("courier", "consolas", "mono", "menlo", "source code")
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
+R = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 
 
 class DocumentError(Exception):
@@ -38,8 +46,9 @@ class Cell:
 
 @dataclass
 class Block:
-    kind: str                       # "heading" | "paragraph" | "bullet" | "code" | "table"
+    kind: str                       # "heading" | "paragraph" | "bullet" | "code" | "table" | "image"
     text: str = ""
+    src: str = ""                   # для картинки: data:-адрес (файл нигде не сохраняется)
     level: int = 0                  # уровень заголовка (1–3)
     grid: list = field(default_factory=list)   # таблица: список строк, в строке список Cell
 
@@ -60,6 +69,7 @@ class ParsedDocument:
     kind: str                       # "PDF" или "Word"
     name: str
     pages: list = field(default_factory=list)
+    skipped_images: int = 0         # сколько картинок не показали из-за лимита
 
     @property
     def is_pdf(self):
@@ -72,6 +82,10 @@ class ParsedDocument:
     @property
     def tables_count(self):
         return sum(1 for p in self.pages for b in p.blocks if b.kind == "table")
+
+    @property
+    def images_count(self):
+        return sum(1 for p in self.pages for b in p.blocks if b.kind == "image")
 
     @property
     def chars_count(self):
@@ -188,7 +202,52 @@ def _text_blocks(page, top, bottom, body_size):
     return blocks
 
 
+class ImageBudget:
+    """Ограничивает число и общий размер картинок, чтобы страница не раздулась."""
+
+    def __init__(self):
+        self.count = 0
+        self.size = 0
+        self.skipped = 0
+
+    def block(self, image):
+        """PIL-картинка -> Block("image") с data:-адресом или None, если лимит исчерпан."""
+        if self.count >= MAX_IMAGES:
+            self.skipped += 1
+            return None
+        image = image.convert("RGB")
+        image.thumbnail((1400, 1400))
+        buf = io.BytesIO()
+        image.save(buf, "JPEG", quality=82)            # заново кодируем сами: чужие байты на страницу не попадают
+        if self.size + buf.tell() > MAX_IMAGES_BYTES:
+            self.skipped += 1
+            return None
+        self.count += 1
+        self.size += buf.tell()
+        src = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
+        return Block("image", src=src)
+
+
+def _pdf_images(page, budget):
+    """Картинки страницы PDF: вырезаем по координатам. Фон на всю страницу и мелкие значки пропускаем."""
+    result, seen = [], set()
+    for im in sorted(page.images, key=lambda i: (round(i["top"]), i["x0"])):
+        w, h = im["x1"] - im["x0"], im["bottom"] - im["top"]
+        box = (max(im["x0"], 0), max(im["top"], 0), min(im["x1"], page.width), min(im["bottom"], page.height))
+        key = tuple(round(v) for v in box)
+        if key in seen or w < MIN_IMAGE_SIDE or h < MIN_IMAGE_SIDE:
+            continue
+        if w * h > 0.7 * page.width * page.height:          # картинка-фон слайда, а не иллюстрация
+            continue
+        seen.add(key)
+        block = budget.block(page.crop(box).to_image(resolution=110).original)
+        if block:
+            result.append(block)
+    return result
+
+
 def read_pdf(file, name="document.pdf"):
+    budget = ImageBudget()
     try:
         pdf = pdfplumber.open(file)
     except Exception as exc:                    # повреждённый или зашифрованный файл
@@ -209,10 +268,11 @@ def read_pdf(file, name="document.pdf"):
                         blocks.append(Block("table", grid=grid))
                     top = table.bbox[3]
                 blocks += _text_blocks(page, top, page.height, body_size)
+                blocks += _pdf_images(page, budget)        # иллюстрации страницы идут после её текста
             except Exception as exc:
                 raise DocumentError(f"Не удалось прочитать страницу {number} PDF.") from exc
             pages.append(Page(number, blocks))
-    return ParsedDocument("PDF", name, pages)
+    return ParsedDocument("PDF", name, pages, skipped_images=budget.skipped)
 
 
 # ---------- Word (python-docx) ----------
@@ -262,6 +322,23 @@ def _docx_table(tbl, document):
     return rows
 
 
+def _docx_images(paragraph_el, document, budget):
+    """Картинки абзаца Word: находим связи a:blip -> файл внутри .docx, открываем через Pillow."""
+    blocks = []
+    for blip in paragraph_el.iter(A + "blip"):
+        rid = blip.get(R + "embed")
+        part = document.part.related_parts.get(rid) if rid else None
+        if part is None:
+            continue
+        try:
+            block = budget.block(Image.open(io.BytesIO(part.blob)))
+        except Exception:                       # формат, который Pillow не читает (EMF, WMF), пропускаем
+            continue
+        if block:
+            blocks.append(block)
+    return blocks
+
+
 def read_docx(file, name="document.docx"):
     try:
         with zipfile.ZipFile(file) as archive:
@@ -274,6 +351,7 @@ def read_docx(file, name="document.docx"):
     except Exception as exc:
         raise DocumentError("Не удалось открыть Word: файл повреждён или это не .docx.") from exc
 
+    budget = ImageBudget()
     blocks = []
     for child in document.element.body.iterchildren():
         if child.tag == W + "p":
@@ -288,7 +366,9 @@ def read_docx(file, name="document.docx"):
                         blocks.append(Block("code", text))
                 continue
             text = paragraph.text.strip()
+            images = _docx_images(child, document, budget)
             if not text:
+                blocks += images
                 continue
             level = _heading_level(style)
             if level:
@@ -297,11 +377,12 @@ def read_docx(file, name="document.docx"):
                 blocks.append(Block("bullet", text))
             else:
                 blocks.append(Block("paragraph", text))
+            blocks += images
         elif child.tag == W + "tbl":
             grid = _docx_table(child, document)
             if grid:
                 blocks.append(Block("table", grid=grid))
-    return ParsedDocument("Word", name, [Page(None, blocks)])
+    return ParsedDocument("Word", name, [Page(None, blocks)], skipped_images=budget.skipped)
 
 
 # ---------- Общая точка входа ----------
