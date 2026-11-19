@@ -9,16 +9,26 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
 from docx import Document
+from PIL import Image
 
 from . import documents
 
 
-def make_docx(heading="Report title", paragraph="First paragraph of the report.", table=None, bullet=None):
+def png_bytes(size=(60, 60), color=(200, 30, 30)):
+    buf = io.BytesIO()
+    Image.new("RGB", size, color).save(buf, "PNG")
+    return buf.getvalue()
+
+
+def make_docx(heading="Report title", paragraph="First paragraph of the report.", table=None, bullet=None, picture=False):
     doc = Document()
     doc.add_heading(heading, level=1)
     doc.add_paragraph(paragraph)
     if bullet:
         doc.add_paragraph(bullet, style="List Bullet")
+    if picture:
+        doc.add_picture(io.BytesIO(png_bytes()))
+        doc.add_paragraph("Text after the picture.")
     if table:
         t = doc.add_table(rows=len(table), cols=len(table[0]))
         t.style = "Table Grid"
@@ -30,7 +40,7 @@ def make_docx(heading="Report title", paragraph="First paragraph of the report."
     return buf.getvalue()
 
 
-def make_pdf(title="Report title", paragraph="First paragraph of the report.", table=None):
+def make_pdf(title="Report title", paragraph="First paragraph of the report.", table=None, picture=False):
     """Маленький настоящий PDF руками: заголовок, абзац и таблица из прямоугольников."""
     parts = [f"BT /F1 20 Tf 72 740 Td ({title}) Tj ET", f"BT /F1 11 Tf 72 700 Td ({paragraph}) Tj ET"]
     y = 640
@@ -40,14 +50,21 @@ def make_pdf(title="Report title", paragraph="First paragraph of the report.", t
             parts.append(f"{x} {y} 120 30 re S")
             parts.append(f"BT /F1 10 Tf {x + 8} {y + 10} Td ({value}) Tj ET")
         y -= 30
+    if picture:                         # квадрат 200x200 пунктов, картинка 2x2 пикселя из сырых RGB-байтов
+        parts.append("q 200 0 0 200 72 400 cm /Im1 Do Q")
     stream = "\n".join(parts).encode("latin-1")
+    resources = "/Font << /F1 4 0 R >>" + (" /XObject << /Im1 6 0 R >>" if picture else "")
     objs = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 5 0 R /Resources << /Font << /F1 4 0 R >> >> >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 5 0 R /Resources << " + resources.encode() + b" >> >>",
         b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
         b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"\nendstream",
     ]
+    if picture:
+        raw = bytes([255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0])
+        objs.append(b"<< /Type /XObject /Subtype /Image /Width 2 /Height 2 /ColorSpace /DeviceRGB "
+                    b"/BitsPerComponent 8 /Length 12 >>\nstream\n" + raw + b"\nendstream")
     out, offsets = b"%PDF-1.4\n", []
     for i, body in enumerate(objs, start=1):
         offsets.append(len(out))
@@ -186,3 +203,36 @@ class PageTests(DocumentsBase):
 
     def test_menu_has_link(self):
         self.assertContains(self.client.get(reverse("slot_list")), reverse("document_view"))
+
+
+class ImageTests(DocumentsBase):
+    """Картинки внутри документов: показываем как <img>, лишнее (фон, значки, лимиты) отсекаем."""
+
+    def test_docx_picture_is_read_in_place(self):
+        doc = documents.read_document(SimpleUploadedFile("p.docx", make_docx(picture=True)))
+        kinds = [b.kind for b in doc.pages[0].blocks]
+        self.assertEqual(kinds, ["heading", "paragraph", "image", "paragraph"])   # картинка стоит между абзацами
+        self.assertEqual(doc.images_count, 1)
+        self.assertTrue(doc.pages[0].blocks[2].src.startswith("data:image/jpeg;base64,"))
+
+    def test_pdf_picture_is_read(self):
+        doc = documents.read_document(SimpleUploadedFile("p.pdf", make_pdf(picture=True)))
+        self.assertEqual(doc.images_count, 1)
+
+    def test_images_are_rendered_as_img_tag(self):
+        r = self.upload("p.docx", make_docx(picture=True))
+        self.assertContains(r, '<img src="data:image/jpeg;base64,')
+        self.assertContains(r, "картинок: 1")
+
+    def test_pdf_without_pictures_has_none(self):
+        self.assertEqual(documents.read_document(SimpleUploadedFile("p.pdf", make_pdf())).images_count, 0)
+
+    def test_image_limit_is_respected(self):
+        with mock.patch.object(documents, "MAX_IMAGES", 0):
+            doc = documents.read_document(SimpleUploadedFile("p.docx", make_docx(picture=True)))
+        self.assertEqual((doc.images_count, doc.skipped_images), (0, 1))
+
+    def test_broken_picture_is_skipped_not_crash(self):
+        with mock.patch.object(documents.Image, "open", side_effect=OSError("bad image")):
+            doc = documents.read_document(SimpleUploadedFile("p.docx", make_docx(picture=True)))
+        self.assertEqual(doc.images_count, 0)

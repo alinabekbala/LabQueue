@@ -20,9 +20,13 @@
     <h2 class="h5 mb-0"><i class="bi bi-file-earmark-{% if document.is_pdf %}pdf{% else %}word{% endif %}"></i> {{ document.name }}</h2>
     <span class="role-pill">{{ document.kind }}</span>
     <span class="small text-muted">
-      {% if document.is_pdf %}страниц: {{ document.pages|length }} · {% endif %}таблиц: {{ document.tables_count }} · символов: {{ document.chars_count }}
+      {% if document.is_pdf %}страниц: {{ document.pages|length }} · {% endif %}таблиц: {{ document.tables_count }} · картинок: {{ document.images_count }} · символов: {{ document.chars_count }}
     </span>
   </div>
+
+  {% if document.skipped_images %}
+    <div class="alert alert-info">Часть картинок не показана ({{ document.skipped_images }} шт.): сработал лимит на их число и размер.</div>
+  {% endif %}
 
   {% if not document.blocks_count %}
     <div class="alert alert-warning mb-0">В документе не найден текст. Если это скан (картинка страницы), текст из него прочитать нельзя.</div>
@@ -39,6 +43,8 @@
         <p class="mb-1 ps-3"><i class="bi bi-dot"></i> {{ block.text }}</p>
       {% elif block.kind == "code" %}
         <pre class="bg-dark text-light p-3 rounded small my-3 overflow-auto doc-code"><code>{{ block.text }}</code></pre>
+      {% elif block.kind == "image" %}
+        <img src="{{ block.src }}" alt="Изображение из документа" class="img-fluid rounded border my-2 me-2 doc-image">
       {% elif block.kind == "table" %}
         <div class="table-responsive my-3"><table class="table table-bordered table-sm small align-middle doc-table">
           {% for row in block.grid %}

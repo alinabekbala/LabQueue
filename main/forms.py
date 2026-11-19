@@ -165,7 +165,7 @@ class DocumentUploadForm(BootstrapMixin, forms.Form):
     """Загрузка PDF или Word для просмотра (ЛЗ 13). Проверяем всё на сервере."""
     file = forms.FileField(
         label="Файл",
-        help_text="PDF или Word (.docx), не больше 5 МБ. Файл не сохраняется: он читается и сразу забывается.",
+        help_text="PDF или Word (.docx), не больше 20 МБ. Файл не сохраняется: он читается и сразу забывается.",
         widget=forms.ClearableFileInput(attrs={"accept": ".pdf,.docx"}),
     )
 
