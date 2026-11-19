@@ -193,19 +193,24 @@ def _segments(line, size):
     return parts
 
 
-def _gutters(infos):
-    """Вертикальные промежутки между колонками: они повторяются минимум в двух строках."""
-    mids = []
+def _gutters(infos, width):
+    """Вертикальные промежутки между колонками: полоса, свободная от текста в большинстве «колоночных» строк."""
+    gaps = []
     for _, parts in infos:
-        for (_, a_end), (b_start, _) in zip(parts, parts[1:]):
-            mids.append((a_end + b_start) / 2)
-    groups = []
-    for m in sorted(mids):
-        if groups and m - groups[-1][-1] <= 12:
-            groups[-1].append(m)
-        else:
-            groups.append([m])
-    return [sum(g) / len(g) for g in groups if len(g) >= 2]
+        gaps += [[(a_end, b_start) for (_, a_end), (b_start, _) in zip(parts, parts[1:])]] if len(parts) > 1 else []
+    if len(gaps) < 2:
+        return []
+    need = max(2, int(len(gaps) * 0.6 + 0.999))
+    free = [sum(1 for row in gaps if any(a <= x <= b for a, b in row)) >= need for x in range(int(width) + 1)]
+    result, start = [], None
+    for x, ok in enumerate(free + [False]):
+        if ok and start is None:
+            start = x
+        elif not ok and start is not None:
+            if x - start >= 6:                      # узкую щель между словами колонкой не считаем
+                result.append((start + x - 1) / 2)
+            start = None
+    return result
 
 
 def _text_blocks(page, top, bottom, body_size):
@@ -220,7 +225,7 @@ def _text_blocks(page, top, bottom, body_size):
     for line in lines:
         sizes = [c["size"] for c in line["chars"] if c["text"].strip()]
         infos.append((line, _segments(line, median(sizes) if sizes else body_size)))
-    gutters = _gutters(infos)
+    gutters = _gutters(infos, page.width)
     if not gutters:
         return _region_blocks(region, body_size)
     # делим на полосы: «во всю ширину» (строка пересекает промежуток) и «колоночные»
