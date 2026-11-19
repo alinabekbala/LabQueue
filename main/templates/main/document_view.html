@@ -37,17 +37,19 @@
         {% else %}<h5 class="h6 mt-3">{{ block.text }}</h5>{% endif %}
       {% elif block.kind == "bullet" %}
         <p class="mb-1 ps-3"><i class="bi bi-dot"></i> {{ block.text }}</p>
+      {% elif block.kind == "code" %}
+        <pre class="bg-dark text-light p-3 rounded small my-3 overflow-auto doc-code"><code>{{ block.text }}</code></pre>
       {% elif block.kind == "table" %}
-        <div class="table-responsive my-3"><table class="table table-bordered table-sm align-middle doc-table">
-          {% if block.rows|length > 1 %}
-          <thead><tr>{% for cell in block.rows.0 %}<th>{{ cell|linebreaksbr }}</th>{% endfor %}</tr></thead>
-          <tbody>{% for row in block.rows|slice:"1:" %}<tr>{% for cell in row %}<td>{{ cell|linebreaksbr }}</td>{% endfor %}</tr>{% endfor %}</tbody>
-          {% else %}
-          <tbody>{% for row in block.rows %}<tr>{% for cell in row %}<td>{{ cell|linebreaksbr }}</td>{% endfor %}</tr>{% endfor %}</tbody>
-          {% endif %}
+        <div class="table-responsive my-3"><table class="table table-bordered table-sm small align-middle doc-table">
+          {% for row in block.grid %}
+          {% if forloop.first and block.grid|length > 1 %}<thead>{% elif forloop.counter == 2 %}<tbody>{% endif %}
+          <tr>{% for cell in row %}<{% if forloop.parentloop.first and block.grid|length > 1 %}th{% else %}td{% endif %}{% if cell.colspan > 1 %} colspan="{{ cell.colspan }}"{% endif %}{% if cell.rowspan > 1 %} rowspan="{{ cell.rowspan }}"{% endif %}>{{ cell.text|linebreaksbr }}</{% if forloop.parentloop.first and block.grid|length > 1 %}th{% else %}td{% endif %}>{% endfor %}</tr>
+          {% if forloop.first and block.grid|length > 1 %}</thead>{% endif %}
+          {% endfor %}
+          {% if block.grid|length > 1 %}</tbody>{% endif %}
         </table></div>
       {% else %}
-        <p class="mb-2">{{ block.text }}</p>
+        <p class="mb-2">{{ block.text|linebreaksbr }}</p>
       {% endif %}
     {% endfor %}
   {% endfor %}
